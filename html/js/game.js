@@ -8,8 +8,11 @@ function World(options) {
 function Player(id, name) {
   var self = this;
 
-  self.id = id;
-  self.name = name;
+  self.id = id || undefined;
+  self.name = name || undefined;
+  self.keystate = 0;
+  self.laststate = 0;
+  self.lasttime = 0;
   self.position = {x: 0, y: 0};
   self.velocity = {x: 0, y: 0};
 
@@ -32,14 +35,17 @@ Player.prototype.setChatMessage = function(chat) {
 
 };
 
+var LEFT_MASK  = 1,
+    RIGHT_MASK = 1 << 1,
+    UP_MASK    = 1 << 2,
+    DOWN_MASK  = 1 << 3;
 
 function Game(options) {
   var self = this;
   options = options || {};
 
   self.players = {};
-  self.name = null;
-  self.id = '';
+  self.client = new Player();
   self.ws = null;
 
   // connect to server
@@ -58,61 +64,37 @@ function Game(options) {
   self._setupInputEvents();
 
   // setup game
-  var game = new Phaser.Game(512, 300, Phaser.CANVAS, 'phaser-example', {
+  self.game = new Phaser.Game(512, 300, Phaser.CANVAS, 'phaser-example', {
     preload: preload, create: create, update: update, render: render
   });
-  Phaser.Canvas.setSmoothingEnabled(game.context, false);
 
+  // preload function
   function preload() {
-	  game.stage.backgroundColor = '#007236';
-	  game.load.image('mushroom', 'assets/sprites/mushroom.png');
-
-    game.input.keyboard.onPressCallback = function(e) {
-      console.log('key pressed: ' + e); 
-    };  
-
-    game.input.keyboard.onUpCallback = function(e) {
-      console.log('key released: ' + e.keyCode);
-      // if(e.keyCode == Phaser.Keyboard.UP){
-      //   console.log('up released');
-      // }
-    };
+	  self.game.stage.backgroundColor = '#007236';
+	  self.game.load.image('mushroom', 'assets/sprites/mushroom.png');
+    self._setupClientCallbacks();
   }
 
   var cursors,
       sprite;
   function create() {
-	  game.world.setBounds(0, 0, 512, 300);
-	  cursors = game.input.keyboard.createCursorKeys();
+	  self.game.world.setBounds(0, 0, 512, 300);
+	  cursors = self.game.input.keyboard.createCursorKeys();
 
-    sprite = game.add.sprite(game.world.centerX, game.world.centerY, 'mushroom');
+    sprite = self.game.add.sprite(self.game.world.centerX, self.game.world.centerY, 'mushroom');
     sprite.anchor.setTo(0.5, 0.5);
     sprite.scale.setTo(2.0, 2.0);
     sprite.smoothed = false;
   }
 
 
-  const IDLE_MASK  = 0;
-  const LEFT_MASK  = 1;
-  const RIGHT_MASK = 1 << 1;
-  const UP_MASK    = 1 << 2;
-  const DOWN_MASK  = 1 << 3;
-  var lastState = IDLE_MASK;
-  
+  var lastupdate = new Date().getTime();
   function update() {
-    var speed = 5.0;
-    if (game.input.keyboard.isDown(Phaser.Keyboard.LEFT)) {
-      sprite.x -= speed;
-    }
-    if (game.input.keyboard.isDown(Phaser.Keyboard.RIGHT)) {
-      sprite.x += speed;
-    }
-    if (game.input.keyboard.isDown(Phaser.Keyboard.UP)) {
-      sprite.y -= speed;
-    }
-    if (game.input.keyboard.isDown(Phaser.Keyboard.DOWN)) {
-      sprite.y += speed;
-    }
+    var time = new Date().getTime(),
+        dt = time - lastupdate,
+        lastupdate = time;
+    self._updatePlayers(dt);
+    self._updateClient(dt);
   }
 
   function render() {
@@ -121,6 +103,58 @@ function Game(options) {
   }
 
 }
+
+Game.prototype._setupClientCallbacks = function() {
+  var self = this;
+
+  var upKey = self.game.input.keyboard.addKey(Phaser.Keyboard.UP);
+  upKey.onDown.add(function(){self.client.keystate |= UP_MASK}, self);
+  upKey.onUp.add(function()  {self.client.keystate &= ~UP_MASK}, self);
+
+  var downKey = self.game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
+  downKey.onDown.add(function(){self.client.keystate |= DOWN_MASK}, self);
+  downKey.onUp.add(function()  {self.client.keystate &= ~DOWN_MASK}, self);
+
+  var leftKey = self.game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
+  leftKey.onDown.add(function() {self.client.keystate |= LEFT_MASK}, self);
+  leftKey.onUp.add(function()   {self.client.keystate &= ~LEFT_MASK}, self);
+
+  var rightKey = self.game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
+  rightKey.onDown.add(function() {self.client.keystate |= RIGHT_MASK}, self);
+  rightKey.onUp.add(function()   {self.client.keystate &= ~RIGHT_MASK}, self);
+
+};
+
+Game.prototype._updateClient = function(dt) {
+  var self = this;
+
+  var speed = 5.0;
+  if (self.client.keystate & LEFT_MASK) {
+    sprite.x -= speed;
+  }
+  if (self.client.keystate & RIGHT_MASK) {
+    sprite.x += speed;
+  }
+  if (self.client.keystate & UP_MASK) {
+    sprite.y -= speed;
+  }
+  if (self.client.keystate & DOWN_MASK) {
+    sprite.y += speed;
+  }
+
+  if (client.keystate !== client.laststate) {
+    // console.log('keystate: ' + client.keystate);
+    client.laststate = client.keystate;
+  }
+};
+
+Game.prototype._updatePlayers = function(dt) {
+  var self = this;
+
+  Object.keys(self.players).forEach(function(player) {
+    // TODO ...
+  });
+};
 
 Game.prototype._setupInputEvents = function() {
   var self = this;
@@ -140,7 +174,8 @@ Game.prototype._setupInputEvents = function() {
       if (!self.requestingHandle) {
         var li = document.createElement("li");
         var textnode = document.createTextNode(message);
-        li.innerHTML = '<a class="user" onclick=\'alert("clicked")\'>&lt'+self.name+'&gt&nbsp</a>';
+        li.innerHTML = '<a class="user" onclick=\'alert("clicked")\'>&lt'
+          + self.client.name + '&gt&nbsp</a>';
         li.appendChild(textnode);
         self.messages.appendChild(li);
         // lock scroller to last message
@@ -174,13 +209,13 @@ Game.prototype._setupServerConnection = function(server) {
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
-          self.id = message.id;
-          self.name// FIXME
+
+          self.client.id = message.id;
+          self.client.name = message.name;
           console.log('Alright ' + message.name + '. If you say so.');
           self.requestingHandle = false;
           console.log(self.handle.innerHTML);
           self.handle.innerHTML = message.name;
-          self.name = message.name;
         break;
       case 'player':
         self.players[message.id] = new Player(message.id, message.name);
