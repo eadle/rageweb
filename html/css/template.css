@@ -1,0 +1,66 @@
+body {
+  background-color: #888888;
+  font-family: 'Press Start 2P', cursive;
+  margin: auto;
+}   
+
+#chat-messages {
+  padding: 1px;
+  margin: auto;
+  border: none;
+}
+
+#chat-log {
+  width: 512px;
+  height: 87px;
+  font-size: 8px;
+  font-family: 'Press Start 2P', cursive;    
+  margin: auto;
+  border: none;
+  background-color: #000000;
+  color: #E6E6FA;
+  overflow-y: scroll;
+  overflow: auto;
+  word-wrap:break-word;
+  text-align: left;
+  resize: none;
+  line-height: 1.5em;
+}
+
+.user {
+  color: #FF0000;
+  cursor: pointer;
+}
+
+#chat-input {
+  width: 512px;
+  height: 10px;
+  font-size: 8px;
+  font-family: 'Press Start 2P', cursive;    
+  margin: auto;
+  border: none;
+  background-color: #000000;
+  color: #E6E6FA;
+  word-wrap: break-word;
+  text-align: left;
+  resize: none;
+}
+
+#chat-hidden {
+    display: none;
+}
+
+#holder {
+  width: 512px;
+  height: 430px;
+  position: absolute;
+  top:0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+}
+
+::-webkit-scrollbar { 
+    display: none; 
+}
