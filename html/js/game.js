@@ -17,23 +17,21 @@ function Player(id, name, sprite) {
   self.velocity = {x: 0, y: 0};
   self.sprite = sprite || null;
 
-  console.log('created player: id='+id + ', name=' + name);
+  console.log('created player: name='+name+', id='+id);
 }
 
-Player.prototype.update = function(t) {
-
+Player.prototype.update = function(dt) {
+  var self = this;
+  // extrapolate player position
+  // TODO
 };
 
 Player.prototype.setPosition = function(position) {
-
+  this.position = position;
 };
 
 Player.prototype.setVelocity = function(velocity) {
-
-};
-
-Player.prototype.setChatMessage = function(chat) {
-
+  this.velocity = velocity;
 };
 
 var LEFT_MASK  = 1,
@@ -112,21 +110,25 @@ function Game(options) {
 Game.prototype._setupClientCallbacks = function() {
   var self = this;
 
+  // moving
   var upKey = self.game.input.keyboard.addKey(Phaser.Keyboard.UP);
   upKey.onDown.add(function(){self.client.keystate |= UP_MASK}, self);
   upKey.onUp.add(function()  {self.client.keystate &= ~UP_MASK}, self);
-
   var downKey = self.game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
   downKey.onDown.add(function(){self.client.keystate |= DOWN_MASK}, self);
   downKey.onUp.add(function()  {self.client.keystate &= ~DOWN_MASK}, self);
-
   var leftKey = self.game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
   leftKey.onDown.add(function() {self.client.keystate |= LEFT_MASK}, self);
   leftKey.onUp.add(function()   {self.client.keystate &= ~LEFT_MASK}, self);
-
   var rightKey = self.game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
   rightKey.onDown.add(function() {self.client.keystate |= RIGHT_MASK}, self);
   rightKey.onUp.add(function()   {self.client.keystate &= ~RIGHT_MASK}, self);
+
+  // jump
+  // TODO
+
+  // talk
+  // TODO
 
 };
 
@@ -151,6 +153,7 @@ Game.prototype._updateClient = function(dt) {
   if (client.keystate !== client.laststate) {
     // console.log('keystate: ' + client.keystate);
     client.laststate = client.keystate;
+    // broadcast keystate, position, velocity
   }
 };
 
@@ -211,16 +214,15 @@ Game.prototype._setupServerConnection = function(server) {
   self.ws = new WebSocket(server);
 
   self.ws.onmessage = function(event) {
-    console.log('received: ' + event.data);
+    // console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
 
           self.client.id = message.id;
           self.client.name = message.name;
-          console.log('Alright ' + message.name + '. If you say so.');
           self.requestingHandle = false;
-          console.log(self.handle.innerHTML);
+          // console.log(self.handle.innerHTML);
           self.handle.innerHTML = message.name;
         break;
       case 'player':
@@ -237,7 +239,7 @@ Game.prototype._setupServerConnection = function(server) {
         break;
       case 'chat':
         var pid = message.id;
-        console.log('received message: ' + message.message);
+        //console.log('received message: ' + message.message);
         self.appendChatMessage(pid, message.message);
         break;
       case 'special':
@@ -278,7 +280,7 @@ Game.prototype._setupServerConnection = function(server) {
 Game.prototype.appendChatMessage = function(pid, message) {
   var self = this;
 
-  console.log('appendChatMessage: pid=' + pid + ', message=' + message);
+  // console.log('appendChatMessage: pid=' + pid + ', message=' + message);
   var player = self.players[pid];
   if (player) {
     var name = player.name;
