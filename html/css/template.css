@@ -20,7 +20,7 @@ body {
   background-color: #000000;
   color: #E6E6FA;
   overflow-y: scroll;
-  overflow: hidden;
+  overflow: auto;
   word-wrap:break-word;
   text-align: left;
   resize: none;
