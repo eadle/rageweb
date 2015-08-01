@@ -5,7 +5,7 @@ function World(options) {
 };
 
 
-function Player(id, name) {
+function Player(id, name, sprite) {
   var self = this;
 
   self.id = id || undefined;
@@ -15,6 +15,7 @@ function Player(id, name) {
   self.lasttime = 0;
   self.position = {x: 0, y: 0};
   self.velocity = {x: 0, y: 0};
+  self.sprite = sprite || null;
 
   console.log('created player: id='+id + ', name=' + name);
 }
@@ -81,10 +82,14 @@ function Game(options) {
 	  self.game.world.setBounds(0, 0, 512, 300);
 	  cursors = self.game.input.keyboard.createCursorKeys();
 
-    sprite = self.game.add.sprite(self.game.world.centerX, self.game.world.centerY, 'mushroom');
-    sprite.anchor.setTo(0.5, 0.5);
-    sprite.scale.setTo(2.0, 2.0);
-    sprite.smoothed = false;
+    self.client.sprite = self.game.add.sprite(
+      self.game.world.centerX,
+      self.game.world.centerY,
+      'mushroom'
+    );
+    self.client.sprite.anchor.setTo(0.5, 0.5);
+    self.client.sprite.scale.setTo(2.0, 2.0);
+    self.client.sprite.smoothed = false;
   }
 
 
@@ -126,20 +131,21 @@ Game.prototype._setupClientCallbacks = function() {
 };
 
 Game.prototype._updateClient = function(dt) {
-  var self = this;
+  var self = this,
+      client = self.client;
 
   var speed = 5.0;
-  if (self.client.keystate & LEFT_MASK) {
-    sprite.x -= speed;
+  if (client.keystate & LEFT_MASK) {
+    client.sprite.x -= speed;
   }
-  if (self.client.keystate & RIGHT_MASK) {
-    sprite.x += speed;
+  if (client.keystate & RIGHT_MASK) {
+    client.sprite.x += speed;
   }
-  if (self.client.keystate & UP_MASK) {
-    sprite.y -= speed;
+  if (client.keystate & UP_MASK) {
+    client.sprite.y -= speed;
   }
-  if (self.client.keystate & DOWN_MASK) {
-    sprite.y += speed;
+  if (client.keystate & DOWN_MASK) {
+    client.sprite.y += speed;
   }
 
   if (client.keystate !== client.laststate) {
