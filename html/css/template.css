@@ -24,6 +24,7 @@ body {
   word-wrap:break-word;
   text-align: left;
   resize: none;
+  line-height: 1.5em;
 }
 
 .user {
@@ -58,4 +59,8 @@ body {
   left: 0;
   right: 0;
   margin: auto;
+}
+
+::-webkit-scrollbar { 
+    display: none; 
 }
