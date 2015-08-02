@@ -10,7 +10,7 @@ function Game(options) {
   options = options || {};
 
   self.players = {};
-  self.client = new Player();
+  self.client = null;
   self.lastupdate = -1;
   self.ws = null;
 
@@ -37,36 +37,26 @@ function Game(options) {
 
   // preload function
   function preload() {
-	  self.game.stage.backgroundColor = '#000000';
+	  self.game.stage.backgroundColor = '#222244';
     self.game.load.atlas('dawnlike', 'assets/dawnlike.png', 'assets/dawnlike.json');
-    self._setupClientCallbacks();
-    self.lasttime = self.game.time.now;
-
     self.game.stage.disableVisibilityChange = true;
+    self.lasttime = self.game.time.now;
   }
 
   var cursors;
   function create() {
 	  self.game.world.setBounds(0, 0, 512, 300);
 	  cursors = self.game.input.keyboard.createCursorKeys();
-
-
     self.spriteGroup = self.game.add.group();
-
-
-    var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
-    self.client.sprite = self._createPlayerSprite(pos);
-
   }
-
 
   function update() {
     var now = self.game.time.now; 
     var dt = now - self.lasttime;
-
     self._updatePlayers(dt);
-    self._updateClient(dt);
-
+    if (self.client) {
+      self._updateClient(dt);
+    }
     self.lasttime = now;
   }
 
@@ -77,30 +67,30 @@ function Game(options) {
 
 }
 
-Game.prototype._addPlayer = function(id, name, file, position, velocity) {
+Game.prototype._createPlayerSprite = function(file) {
   var self = this;
-
   var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
-  var sprite = new Phaser.Sprite(self.game, pos.x, pos.y, 'dawnlike', 'ghost-2.png');
+  var sprite = new Phaser.Sprite(self.game, pos.x, pos.y, 'dawnlike', file);
   sprite.scale.setTo(2.0, 2.0);
   sprite.anchor.setTo(0.5, 0.5);
   sprite.smoothed = false;
   self.spriteGroup.add(sprite);
-  self.players[id] = new Player(id, name, sprite, pos);
-
+  return sprite;
 };
 
-Game.prototype._createPlayerSprite = function(file, position, velocity) {
+Game.prototype._addPlayer = function(id, name, file, position, velocity) {
   var self = this;
-
   var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
-  var sprite = new Phaser.Sprite(self.game, pos.x, pos.y, 'dawnlike', 'ghost-2.png');
-  sprite.scale.setTo(2.0, 2.0);
-  sprite.anchor.setTo(0.5, 0.5);
-  sprite.smoothed = false;
-  self.spriteGroup.add(sprite);
+  var sprite = self._createPlayerSprite(file, position);
+  self.players[id] = new Player(id, name, sprite, pos);
+};
 
-  return sprite;
+Game.prototype._addClient = function(id, name, file, position, velocity) {
+  var self = this;
+  var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
+  var sprite = self._createPlayerSprite(file, position);
+  self.client = new Player(id, name, sprite, pos);
+  self._setupClientCallbacks();
 };
 
 Game.prototype._setupClientCallbacks = function() {
@@ -129,23 +119,17 @@ Game.prototype._setupClientCallbacks = function() {
 };
 
 Game.prototype._updateClient = function(dt) {
-  var self = this,
-      client = self.client;
+  var self = this;
 
-  var speed = 0.25;
-
-  // modify velocity based on keystate
+  var client = self.client,
+      speed = 0.25;
   client.velocity.x = 0;
   client.velocity.y = 0;
   if (client.keystate & LEFT_MASK)  client.velocity.x -= speed;
   if (client.keystate & RIGHT_MASK) client.velocity.x += speed;
   if (client.keystate & UP_MASK)    client.velocity.y -= speed;
   if (client.keystate & DOWN_MASK)  client.velocity.y += speed;
-
-  client.position.x += dt*client.velocity.x;
-  client.position.y += dt*client.velocity.y;
-  client.sprite.x = client.position.x;
-  client.sprite.y = client.position.y;
+  client.update(dt);
 
   if (client.keystate !== client.laststate) {
     client.lasttime = self.game.time.now;
@@ -221,11 +205,9 @@ Game.prototype._setupServerConnection = function(server) {
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
-          self.client.id = message.id;
-          self.client.name = message.name;
           self.requestingHandle = false;
           self.handle.innerHTML = message.name;
-          self.client.sprite.scale.setTo(2.0, 2.0);
+          self._addClient(message.id, message.name, 'ghost-2.png');
         break;
       case 'player':
         // TODO set position and velocity

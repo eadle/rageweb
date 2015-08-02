@@ -12,7 +12,6 @@ function Player(id, name, sprite, position) {
   self.position = position || {x: 0, y: 0};
   self.velocity = {x: 0, y: 0};
 
-
   console.log('created player: name='+name+', id='+id);
 }
 
