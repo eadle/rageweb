@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <head>
   <meta charset='utf-8'>
-  <title>we spooky now</title>
+  <title>\o/ NEET</title>
   <link rel='stylesheet' href='css/template.css' type='text/css'>
   <link href='http://fonts.googleapis.com/css?family=Press+Start+2P' rel='stylesheet' type='text/css'>
 </head>
 
-<body onload="document.getElementById('chat-input').select();">
+<body>
   <div id="holder">
     <div id="handle">who are you?</div>
     <div>
@@ -28,7 +28,10 @@
 <script src="js/player.js"></script>
 <script>
   'use strict';
-  var game = new Game();
+  window.onload = function() {
+    var game = new Game();
+    document.getElementById('chat-input').select();
+  };
 </script>
 
 </html>

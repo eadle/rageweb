@@ -67,9 +67,9 @@ function Game(options) {
 
 }
 
-Game.prototype._createPlayerSprite = function(file) {
+Game.prototype._createPlayerSprite = function(file, pos) {
   var self = this;
-  var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
+  pos = pos || {x: self.game.world.centerX, y: self.game.world.centerY};
   var sprite = new Phaser.Sprite(self.game, pos.x, pos.y, 'dawnlike', file);
   sprite.scale.setTo(2.0, 2.0);
   sprite.anchor.setTo(0.5, 0.5);
@@ -80,9 +80,8 @@ Game.prototype._createPlayerSprite = function(file) {
 
 Game.prototype._addPlayer = function(id, name, file, position, velocity) {
   var self = this;
-  var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
   var sprite = self._createPlayerSprite(file, position);
-  self.players[id] = new Player(id, name, sprite, pos);
+  self.players[id] = new Player(id, name, sprite, position, velocity);
 };
 
 Game.prototype._addClient = function(id, name, file, position, velocity) {
@@ -91,6 +90,7 @@ Game.prototype._addClient = function(id, name, file, position, velocity) {
   var sprite = self._createPlayerSprite(file, position);
   self.client = new Player(id, name, sprite, pos);
   self._setupClientCallbacks();
+  self._broadcastClientState();
 };
 
 Game.prototype._setupClientCallbacks = function() {
@@ -134,15 +134,9 @@ Game.prototype._updateClient = function(dt) {
   if (client.keystate !== client.laststate) {
     client.lasttime = self.game.time.now;
     client.laststate = client.keystate;
-    // send move message
-    self.ws.send(JSON.stringify({
-      'type': 'move',
-      'id': client.id,
-      'position': client.position,
-      'velocity': client.velocity,
-      'time': client.lastime
-    }));
+    self._broadcastClientState();
   }
+
 };
 
 Game.prototype._updatePlayers = function(dt) {
@@ -195,23 +189,39 @@ Game.prototype._setupInputEvents = function() {
 
 };
 
+Game.prototype._broadcastClientState = function(data) {
+  var self = this;
+
+  if (self.client) {
+    self.ws.send(JSON.stringify({
+      'type': 'move',
+      'id': self.client.id,
+      'position': self.client.position,
+      'velocity': self.client.velocity
+    }));
+  }
+};
+
 Game.prototype._setupServerConnection = function(server) {
   var self = this;
 
   self.ws = new WebSocket(server);
 
   self.ws.onmessage = function(event) {
-    //console.log('received: ' + event.data);
+    console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
           self.requestingHandle = false;
           self.handle.innerHTML = message.name;
           self._addClient(message.id, message.name, 'ghost-2.png');
+
         break;
       case 'player':
         // TODO set position and velocity
-        self._addPlayer(message.id, message.name, 'ghost-2.png');
+        self._addPlayer(message.id, message.name, 'ghost-2.png',
+          message.position, message.velocity);
+        console.log('added ' + message.name + ' at (' + message.position.x + ', ' + message.position.y + ')');
         break;
       case 'move':
         var position = message.position,
@@ -221,15 +231,14 @@ Game.prototype._setupServerConnection = function(server) {
         break;
       case 'jump':
         var pid = message.id;
-        self.applyJump(pid); // TODO
+        // self.applyJump(pid); TODO
         break;
       case 'chat':
         var pid = message.id;
-        //console.log('received message: ' + message.message);
         self.appendChatMessage(pid, message.message);
         break;
       case 'special':
-        self.applySpecial();
+        // self.applySpecial(); TODO
         break;
       case 'disconnect':
         var player = self.players[message.id];
@@ -239,17 +248,16 @@ Game.prototype._setupServerConnection = function(server) {
         }
         break;
       case 'worldstate':
-        // iterate over all players
+        // add players to the world
         var players = message.players;
         if (typeof players === 'object') {
           console.log('adding all players');
           Object.keys(players).forEach(function(name) {
-            var pid = players[name];
-            // TODO set player location and velocity
-            self._addPlayer(pid, name, 'ghost-2.png');
+            var player = players[name];
+            self._addPlayer(player.id, name, 'ghost-2.png',
+              player.position, player.velocity);
           });
         }
-        // TODO
         break;
       default:
     }   
