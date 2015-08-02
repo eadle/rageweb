@@ -1,6 +1,6 @@
 'use strict';
 
-function Player(id, name, sprite) {
+function Player(id, name, sprite, position) {
   var self = this;
 
   self.id = id || undefined;
@@ -8,9 +8,10 @@ function Player(id, name, sprite) {
   self.keystate = 0;
   self.laststate = 0;
   self.lasttime = 0;
-  self.position = {x: 0, y: 0};
+  self.sprite = sprite;
+  self.position = position || {x: 0, y: 0};
   self.velocity = {x: 0, y: 0};
-  self.sprite = sprite || null;
+
 
   console.log('created player: name='+name+', id='+id);
 }

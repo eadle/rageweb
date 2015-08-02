@@ -30,14 +30,15 @@ function Game(options) {
   self._setupInputEvents();
 
   // setup game
+  self.spriteGroup = null;
   self.game = new Phaser.Game(512, 300, Phaser.CANVAS, 'phaser-example', {
     preload: preload, create: create, update: update, render: render
   });
 
   // preload function
   function preload() {
-	  self.game.stage.backgroundColor = '#007236';
-	  self.game.load.image('mushroom', 'assets/sprites/mushroom.png');
+	  self.game.stage.backgroundColor = '#000000';
+    self.game.load.atlas('dawnlike', 'assets/dawnlike.png', 'assets/dawnlike.json');
     self._setupClientCallbacks();
     self.lasttime = self.game.time.now;
 
@@ -49,8 +50,13 @@ function Game(options) {
 	  self.game.world.setBounds(0, 0, 512, 300);
 	  cursors = self.game.input.keyboard.createCursorKeys();
 
+
+    self.spriteGroup = self.game.add.group();
+
+
     var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
     self.client.sprite = self._createPlayerSprite(pos);
+
   }
 
 
@@ -71,17 +77,28 @@ function Game(options) {
 
 }
 
-Game.prototype._createPlayerSprite = function() {
+Game.prototype._addPlayer = function(id, name, file, position, velocity) {
   var self = this;
 
-  var sprite = self.game.add.sprite(
-    self.game.world.centerX,
-    self.game.world.centerY,
-    'mushroom'
-  );
+  var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
+  var sprite = new Phaser.Sprite(self.game, pos.x, pos.y, 'dawnlike', 'ghost-2.png');
   sprite.scale.setTo(2.0, 2.0);
   sprite.anchor.setTo(0.5, 0.5);
   sprite.smoothed = false;
+  self.spriteGroup.add(sprite);
+  self.players[id] = new Player(id, name, sprite, pos);
+
+};
+
+Game.prototype._createPlayerSprite = function(file, position, velocity) {
+  var self = this;
+
+  var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
+  var sprite = new Phaser.Sprite(self.game, pos.x, pos.y, 'dawnlike', 'ghost-2.png');
+  sprite.scale.setTo(2.0, 2.0);
+  sprite.anchor.setTo(0.5, 0.5);
+  sprite.smoothed = false;
+  self.spriteGroup.add(sprite);
 
   return sprite;
 };
@@ -211,10 +228,8 @@ Game.prototype._setupServerConnection = function(server) {
           self.client.sprite.scale.setTo(2.0, 2.0);
         break;
       case 'player':
-        var playerSprite = self._createPlayerSprite();
-        self.players[message.id] = new Player(message.id, message.name, playerSprite);
-        // get position and velocity
-        // TODO ...
+        // TODO set position and velocity
+        self._addPlayer(message.id, message.name, 'ghost-2.png');
         break;
       case 'move':
         var position = message.position,
@@ -248,10 +263,8 @@ Game.prototype._setupServerConnection = function(server) {
           console.log('adding all players');
           Object.keys(players).forEach(function(name) {
             var pid = players[name];
-            var playerSprite = self._createPlayerSprite();
-            self.players[pid] = new Player(pid, name, playerSprite);
-            // get player location and velocity
-            // TODO ...
+            // TODO set player location and velocity
+            self._addPlayer(pid, name, 'ghost-2.png');
           });
         }
         // TODO
