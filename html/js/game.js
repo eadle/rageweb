@@ -27,7 +27,15 @@ Player.prototype.update = function(dt) {
 };
 
 Player.prototype.setPosition = function(position) {
-  this.position = position;
+  var self = this;
+  if (self.sprite) {
+    self.sprite.x = position.x;
+    self.sprite.y = position.y;
+  } else {
+    console.log('player has no sprite???');
+  }
+  console.log('set ' + self.name + ' position: (' + position.x + ', ' + position.y + ')');
+  self.position = position;
 };
 
 Player.prototype.setVelocity = function(velocity) {
@@ -74,22 +82,12 @@ function Game(options) {
     self._setupClientCallbacks();
   }
 
-  var cursors,
-      sprite;
+  var cursors;
   function create() {
 	  self.game.world.setBounds(0, 0, 512, 300);
 	  cursors = self.game.input.keyboard.createCursorKeys();
-
-    self.client.sprite = self.game.add.sprite(
-      self.game.world.centerX,
-      self.game.world.centerY,
-      'mushroom'
-    );
-    self.client.sprite.anchor.setTo(0.5, 0.5);
-    self.client.sprite.scale.setTo(2.0, 2.0);
-    self.client.sprite.smoothed = false;
+    self.client.sprite = self._createPlayerSprite();
   }
-
 
   var lastupdate = new Date().getTime();
   function update() {
@@ -106,6 +104,21 @@ function Game(options) {
   }
 
 }
+
+Game.prototype._createPlayerSprite = function() {
+  var self = this;
+
+  var sprite = self.game.add.sprite(
+    self.game.world.centerX,
+    self.game.world.centerY,
+    'mushroom'
+  );
+  sprite.anchor.setTo(0.5, 0.5);
+  sprite.scale.setTo(2.0, 2.0);
+  sprite.smoothed = false;
+
+  return sprite;
+};
 
 Game.prototype._setupClientCallbacks = function() {
   var self = this;
@@ -146,11 +159,11 @@ Game.prototype._updateClient = function(dt) {
   if (client.keystate !== client.laststate) {
     client.laststate = client.keystate;
     // broadcast keystate, position, velocity
-    console.log('broadcasting position and velocity');
+    console.log('broadcasting position=(' + client.sprite.x + ', ' + client.sprite.y + ')');
     self.ws.send(JSON.stringify({
       'type': 'move',
       'id': client.id,
-      'position': client.position,
+      'position': {x: client.sprite.x, y: client.sprite.y},
       'velocity': client.velocity
     }));
   }
@@ -213,7 +226,7 @@ Game.prototype._setupServerConnection = function(server) {
   self.ws = new WebSocket(server);
 
   self.ws.onmessage = function(event) {
-    // console.log('received: ' + event.data);
+    console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
@@ -223,11 +236,12 @@ Game.prototype._setupServerConnection = function(server) {
           self.handle.innerHTML = message.name;
         break;
       case 'player':
+        var playerSprite = self._createPlayerSprite();
         self.players[message.id] = new Player(message.id, message.name);
         break;
       case 'move':
-        var position = message.pos,
-            velocity = message.vel,
+        var position = message.position,
+            velocity = message.velocity,
             pid = message.id;
         self.applyMove(pid, position, velocity);
         break;
@@ -250,7 +264,8 @@ Game.prototype._setupServerConnection = function(server) {
           console.log('adding all players');
           Object.keys(players).forEach(function(name) {
             var pid = players[name];
-            self.players[pid] = new Player(pid, name);
+            var playerSprite = self._createPlayerSprite();
+            self.players[pid] = new Player(pid, name, playerSprite);
           });
         }
         // TODO
@@ -277,7 +292,9 @@ Game.prototype._setupServerConnection = function(server) {
 
 Game.prototype.applyMove = function(pid, position, velocity) {
   var self = this;
-  console.log('received position of ' + self.players[pid].name);
+  //console.log('received position of ' + self.players[pid].name + ': ' + position );
+  //console.log(position);
+  self.players[pid].setPosition(position);
 };
 
 Game.prototype.appendChatMessage = function(pid, message) {
