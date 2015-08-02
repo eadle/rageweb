@@ -26,7 +26,6 @@ Player.prototype.dispose = function() {
 
 Player.prototype.update = function(dt) {
   var self = this;
-  // FIXME
   self.position.x += dt*self.velocity.x; 
   self.position.y += dt*self.velocity.y;
   self.sprite.x = self.position.x;

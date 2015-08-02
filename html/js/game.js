@@ -34,12 +34,16 @@ function Game(options) {
     preload: preload, create: create, update: update, render: render
   });
 
+  
+
   // preload function
   function preload() {
 	  self.game.stage.backgroundColor = '#007236';
 	  self.game.load.image('mushroom', 'assets/sprites/mushroom.png');
     self._setupClientCallbacks();
     self.lasttime = self.game.time.now;
+
+    self.game.stage.disableVisibilityChange = true;
   }
 
   var cursors;
@@ -113,9 +117,11 @@ Game.prototype._updateClient = function(dt) {
   var self = this,
       client = self.client;
 
-  var speed = 0.01;
+  var speed = 0.5;
 
   // modify velocity based on keystate
+  client.velocity.x = 0;
+  client.velocity.y = 0;
   if (client.keystate & LEFT_MASK)  client.velocity.x -= speed;
   if (client.keystate & RIGHT_MASK) client.velocity.x += speed;
   if (client.keystate & UP_MASK)    client.velocity.y -= speed;
@@ -127,13 +133,15 @@ Game.prototype._updateClient = function(dt) {
   client.sprite.y = client.position.y;
 
   if (client.keystate !== client.laststate) {
+    client.lasttime = self.game.time.now;
     client.laststate = client.keystate;
     // send move message
     self.ws.send(JSON.stringify({
       'type': 'move',
       'id': client.id,
       'position': client.position,
-      'velocity': client.velocity
+      'velocity': client.velocity,
+      'time': client.lastime
     }));
   }
 };
