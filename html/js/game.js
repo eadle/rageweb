@@ -137,23 +137,22 @@ Game.prototype._updateClient = function(dt) {
       client = self.client;
 
   var speed = 5.0;
-  if (client.keystate & LEFT_MASK) {
-    client.sprite.x -= speed;
-  }
-  if (client.keystate & RIGHT_MASK) {
-    client.sprite.x += speed;
-  }
-  if (client.keystate & UP_MASK) {
-    client.sprite.y -= speed;
-  }
-  if (client.keystate & DOWN_MASK) {
-    client.sprite.y += speed;
-  }
+  // temporary
+  if (client.keystate & LEFT_MASK) client.sprite.x -= speed;
+  if (client.keystate & RIGHT_MASK) client.sprite.x += speed;
+  if (client.keystate & UP_MASK) client.sprite.y -= speed;
+  if (client.keystate & DOWN_MASK) client.sprite.y += speed;
 
   if (client.keystate !== client.laststate) {
-    // console.log('keystate: ' + client.keystate);
     client.laststate = client.keystate;
     // broadcast keystate, position, velocity
+    console.log('broadcasting position and velocity');
+    self.ws.send(JSON.stringify({
+      'type': 'move',
+      'id': client.id,
+      'position': client.position,
+      'velocity': client.velocity
+    }));
   }
 };
 
@@ -218,11 +217,9 @@ Game.prototype._setupServerConnection = function(server) {
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
-
           self.client.id = message.id;
           self.client.name = message.name;
           self.requestingHandle = false;
-          // console.log(self.handle.innerHTML);
           self.handle.innerHTML = message.name;
         break;
       case 'player':
@@ -233,9 +230,10 @@ Game.prototype._setupServerConnection = function(server) {
             velocity = message.vel,
             pid = message.id;
         self.applyMove(pid, position, velocity);
+        break;
       case 'jump':
         var pid = message.id;
-        self.applyJump(pid);
+        self.applyJump(pid); // TODO
         break;
       case 'chat':
         var pid = message.id;
@@ -275,6 +273,11 @@ Game.prototype._setupServerConnection = function(server) {
   };
   
 
+};
+
+Game.prototype.applyMove = function(pid, position, velocity) {
+  var self = this;
+  console.log('received position of ' + self.players[pid].name);
 };
 
 Game.prototype.appendChatMessage = function(pid, message) {
