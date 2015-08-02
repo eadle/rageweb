@@ -1,47 +1,5 @@
 'use strict';
 
-function World(options) {
-  // TODO...
-};
-
-
-function Player(id, name, sprite) {
-  var self = this;
-
-  self.id = id || undefined;
-  self.name = name || undefined;
-  self.keystate = 0;
-  self.laststate = 0;
-  self.lasttime = 0;
-  self.position = {x: 0, y: 0};
-  self.velocity = {x: 0, y: 0};
-  self.sprite = sprite || null;
-
-  console.log('created player: name='+name+', id='+id);
-}
-
-Player.prototype.update = function(dt) {
-  var self = this;
-  // extrapolate player position
-  // TODO
-};
-
-Player.prototype.setPosition = function(position) {
-  var self = this;
-  if (self.sprite) {
-    self.sprite.x = position.x;
-    self.sprite.y = position.y;
-  } else {
-    console.log('player has no sprite???');
-  }
-  console.log('set ' + self.name + ' position: (' + position.x + ', ' + position.y + ')');
-  self.position = position;
-};
-
-Player.prototype.setVelocity = function(velocity) {
-  this.velocity = velocity;
-};
-
 var LEFT_MASK  = 1,
     RIGHT_MASK = 1 << 1,
     UP_MASK    = 1 << 2,
@@ -53,6 +11,7 @@ function Game(options) {
 
   self.players = {};
   self.client = new Player();
+  self.lastupdate = -1;
   self.ws = null;
 
   // connect to server
@@ -80,22 +39,27 @@ function Game(options) {
 	  self.game.stage.backgroundColor = '#007236';
 	  self.game.load.image('mushroom', 'assets/sprites/mushroom.png');
     self._setupClientCallbacks();
+    self.lasttime = self.game.time.now;
   }
 
   var cursors;
   function create() {
 	  self.game.world.setBounds(0, 0, 512, 300);
 	  cursors = self.game.input.keyboard.createCursorKeys();
-    self.client.sprite = self._createPlayerSprite();
+
+    var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
+    self.client.sprite = self._createPlayerSprite(pos);
   }
 
-  var lastupdate = new Date().getTime();
+
   function update() {
-    var time = new Date().getTime(),
-        dt = time - lastupdate,
-        lastupdate = time;
+    var now = self.game.time.now; 
+    var dt = now - self.lasttime;
+
     self._updatePlayers(dt);
     self._updateClient(dt);
+
+    self.lasttime = now;
   }
 
   function render() {
@@ -149,21 +113,26 @@ Game.prototype._updateClient = function(dt) {
   var self = this,
       client = self.client;
 
-  var speed = 5.0;
-  // temporary
-  if (client.keystate & LEFT_MASK) client.sprite.x -= speed;
-  if (client.keystate & RIGHT_MASK) client.sprite.x += speed;
-  if (client.keystate & UP_MASK) client.sprite.y -= speed;
-  if (client.keystate & DOWN_MASK) client.sprite.y += speed;
+  var speed = 0.01;
+
+  // modify velocity based on keystate
+  if (client.keystate & LEFT_MASK)  client.velocity.x -= speed;
+  if (client.keystate & RIGHT_MASK) client.velocity.x += speed;
+  if (client.keystate & UP_MASK)    client.velocity.y -= speed;
+  if (client.keystate & DOWN_MASK)  client.velocity.y += speed;
+
+  client.position.x += dt*client.velocity.x;
+  client.position.y += dt*client.velocity.y;
+  client.sprite.x = client.position.x;
+  client.sprite.y = client.position.y;
 
   if (client.keystate !== client.laststate) {
     client.laststate = client.keystate;
-    // broadcast keystate, position, velocity
-    console.log('broadcasting position=(' + client.sprite.x + ', ' + client.sprite.y + ')');
+    // send move message
     self.ws.send(JSON.stringify({
       'type': 'move',
       'id': client.id,
-      'position': {x: client.sprite.x, y: client.sprite.y},
+      'position': client.position,
       'velocity': client.velocity
     }));
   }
@@ -171,9 +140,8 @@ Game.prototype._updateClient = function(dt) {
 
 Game.prototype._updatePlayers = function(dt) {
   var self = this;
-
   Object.keys(self.players).forEach(function(player) {
-    // TODO ...
+    self.players[player].update(dt);
   });
 };
 
@@ -226,7 +194,7 @@ Game.prototype._setupServerConnection = function(server) {
   self.ws = new WebSocket(server);
 
   self.ws.onmessage = function(event) {
-    console.log('received: ' + event.data);
+    //console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
@@ -237,7 +205,7 @@ Game.prototype._setupServerConnection = function(server) {
         break;
       case 'player':
         var playerSprite = self._createPlayerSprite();
-        self.players[message.id] = new Player(message.id, message.name);
+        self.players[message.id] = new Player(message.id, message.name, playerSprite);
         break;
       case 'move':
         var position = message.position,
@@ -256,6 +224,13 @@ Game.prototype._setupServerConnection = function(server) {
         break;
       case 'special':
         self.applySpecial();
+        break;
+      case 'disconnect':
+        var player = self.players[message.id];
+        if (player) {
+          player.dispose();
+          delete self.players[message.id];
+        }
         break;
       case 'worldstate':
         // iterate over all players
@@ -292,9 +267,8 @@ Game.prototype._setupServerConnection = function(server) {
 
 Game.prototype.applyMove = function(pid, position, velocity) {
   var self = this;
-  //console.log('received position of ' + self.players[pid].name + ': ' + position );
-  //console.log(position);
   self.players[pid].setPosition(position);
+  self.players[pid].setVelocity(velocity);
 };
 
 Game.prototype.appendChatMessage = function(pid, message) {
