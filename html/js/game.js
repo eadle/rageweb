@@ -34,8 +34,6 @@ function Game(options) {
     preload: preload, create: create, update: update, render: render
   });
 
-  
-
   // preload function
   function preload() {
 	  self.game.stage.backgroundColor = '#007236';
