@@ -79,8 +79,8 @@ Game.prototype._createPlayerSprite = function() {
     self.game.world.centerY,
     'mushroom'
   );
-  sprite.anchor.setTo(0.5, 0.5);
   sprite.scale.setTo(2.0, 2.0);
+  sprite.anchor.setTo(0.5, 0.5);
   sprite.smoothed = false;
 
   return sprite;
@@ -115,7 +115,7 @@ Game.prototype._updateClient = function(dt) {
   var self = this,
       client = self.client;
 
-  var speed = 0.5;
+  var speed = 0.25;
 
   // modify velocity based on keystate
   client.velocity.x = 0;
@@ -208,10 +208,13 @@ Game.prototype._setupServerConnection = function(server) {
           self.client.name = message.name;
           self.requestingHandle = false;
           self.handle.innerHTML = message.name;
+          self.client.sprite.scale.setTo(2.0, 2.0);
         break;
       case 'player':
         var playerSprite = self._createPlayerSprite();
         self.players[message.id] = new Player(message.id, message.name, playerSprite);
+        // get position and velocity
+        // TODO ...
         break;
       case 'move':
         var position = message.position,
@@ -247,6 +250,8 @@ Game.prototype._setupServerConnection = function(server) {
             var pid = players[name];
             var playerSprite = self._createPlayerSprite();
             self.players[pid] = new Player(pid, name, playerSprite);
+            // get player location and velocity
+            // TODO ...
           });
         }
         // TODO
@@ -273,8 +278,10 @@ Game.prototype._setupServerConnection = function(server) {
 
 Game.prototype.applyMove = function(pid, position, velocity) {
   var self = this;
-  self.players[pid].setPosition(position);
-  self.players[pid].setVelocity(velocity);
+  if (pid in self.players) {
+    self.players[pid].setPosition(position);
+    self.players[pid].setVelocity(velocity);
+  }
 };
 
 Game.prototype.appendChatMessage = function(pid, message) {

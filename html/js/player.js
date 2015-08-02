@@ -26,6 +26,11 @@ Player.prototype.dispose = function() {
 
 Player.prototype.update = function(dt) {
   var self = this;
+  if (self.velocity.x > 0) {
+    self.sprite.scale.setTo(-2.0, 2.0);
+  } else if (self.velocity.x < 0) {
+    self.sprite.scale.setTo(2.0, 2.0);
+  }
   self.position.x += dt*self.velocity.x; 
   self.position.y += dt*self.velocity.y;
   self.sprite.x = self.position.x;
