@@ -144,27 +144,9 @@
 	"sourceSize": {"w":16,"h":16},
 	"pivot": {"x":0.5,"y":0.5}
 },
-"ghost-0.png":
-{
-	"frame": {"x":38,"y":38,"w":14,"h":15},
-	"rotated": false,
-	"trimmed": true,
-	"spriteSourceSize": {"x":0,"y":0,"w":14,"h":15},
-	"sourceSize": {"w":16,"h":16},
-	"pivot": {"x":0.5,"y":0.5}
-},
-"ghost-1.png":
-{
-	"frame": {"x":54,"y":38,"w":13,"h":15},
-	"rotated": false,
-	"trimmed": true,
-	"spriteSourceSize": {"x":0,"y":1,"w":13,"h":15},
-	"sourceSize": {"w":16,"h":16},
-	"pivot": {"x":0.5,"y":0.5}
-},
 "ghost-2.png":
 {
-	"frame": {"x":69,"y":38,"w":16,"h":16},
+	"frame": {"x":38,"y":38,"w":16,"h":16},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":16,"h":16},
@@ -173,16 +155,34 @@
 },
 "ghost-3.png":
 {
-	"frame": {"x":87,"y":38,"w":14,"h":15},
+	"frame": {"x":56,"y":38,"w":16,"h":16},
 	"rotated": false,
-	"trimmed": true,
-	"spriteSourceSize": {"x":0,"y":1,"w":14,"h":15},
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":16,"h":16},
+	"sourceSize": {"w":16,"h":16},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"skelly-0.png":
+{
+	"frame": {"x":74,"y":38,"w":16,"h":16},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":16,"h":16},
+	"sourceSize": {"w":16,"h":16},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"skelly-1.png":
+{
+	"frame": {"x":92,"y":38,"w":16,"h":16},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":16,"h":16},
 	"sourceSize": {"w":16,"h":16},
 	"pivot": {"x":0.5,"y":0.5}
 },
 "wall-0.png":
 {
-	"frame": {"x":103,"y":38,"w":16,"h":16},
+	"frame": {"x":110,"y":38,"w":16,"h":16},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":16,"h":16},
@@ -304,6 +304,6 @@
 	"format": "RGBA8888",
 	"size": {"w":128,"h":128},
 	"scale": "1",
-	"smartupdate": "$TexturePacker:SmartUpdate:49d810221463f4c55cd5a289e7a2537d:5d16a2330f44c8dd881ad128e81867c9:1768453fbfe2758d08eb3bfa54b55b83$"
+	"smartupdate": "$TexturePacker:SmartUpdate:f3a4b750227a40e76b833149a997ac61:503e9bbc1db1e9945d53ccc9eb37d59a:1768453fbfe2758d08eb3bfa54b55b83$"
 }
 }

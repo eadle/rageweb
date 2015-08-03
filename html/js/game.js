@@ -13,13 +13,7 @@ function Game(options) {
   self.client = null;
   self.lastupdate = -1;
   self.ws = null;
-
-  // connect to server
-  var server = 'ws://167.114.185.203:8188';
-  if (typeof server !== 'string') {
-    throw new Error('expects valid server');
-  }
-  self._setupServerConnection(server);
+  self.spriteGroup = null;
 
   // setup chat 
   self.log = document.getElementById('chat-log'),
@@ -30,13 +24,14 @@ function Game(options) {
   self._setupInputEvents();
 
   // setup game
-  self.spriteGroup = null;
   self.game = new Phaser.Game(512, 300, Phaser.CANVAS, 'phaser-example', {
     preload: preload, create: create, update: update, render: render
   });
 
   // preload function
   function preload() {
+    console.log('preload');
+
 	  self.game.stage.backgroundColor = '#222244';
     self.game.load.atlas('dawnlike', 'assets/dawnlike.png', 'assets/dawnlike.json');
     self.game.stage.disableVisibilityChange = true;
@@ -45,6 +40,14 @@ function Game(options) {
 
   var cursors;
   function create() {
+
+    // connect to server
+    var server = 'ws://167.114.185.203:8188';
+    if (typeof server !== 'string') {
+      throw new Error('expects valid server');
+    }
+
+    self._setupServerConnection(server);
 	  self.game.world.setBounds(0, 0, 512, 300);
 	  cursors = self.game.input.keyboard.createCursorKeys();
     self.spriteGroup = self.game.add.group();
@@ -74,6 +77,11 @@ Game.prototype._createPlayerSprite = function(file, pos) {
   sprite.scale.setTo(2.0, 2.0);
   sprite.anchor.setTo(0.5, 0.5);
   sprite.smoothed = false;
+
+  // testing idle animation
+  sprite.animations.add('skelly-idle', ['skelly-0.png', 'skelly-1.png']);
+  sprite.animations.play('skelly-idle', 2, true);
+
   self.spriteGroup.add(sprite);
   return sprite;
 };
@@ -162,14 +170,8 @@ Game.prototype._setupInputEvents = function() {
     var message = self.input.value;
     if (self.input.value !== '') {
       if (!self.requestingHandle) {
-        var li = document.createElement("li");
-        var textnode = document.createTextNode(message);
-        li.innerHTML = '<a class="user" onclick=\'alert("clicked")\'>&lt'
-          + self.client.name + '&gt&nbsp</a>';
-        li.appendChild(textnode);
-        self.messages.appendChild(li);
-        // lock scroller to last message
-        self.log.scrollTop = self.log.scrollHeight;
+        // add message to chat messages
+        self.appendChatMessage(self.client.name, message);
         // send message to server
         self.ws.send(JSON.stringify({
           'type': 'chat',
@@ -208,18 +210,18 @@ Game.prototype._setupServerConnection = function(server) {
   self.ws = new WebSocket(server);
 
   self.ws.onmessage = function(event) {
-    console.log('received: ' + event.data);
+    //console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
           self.requestingHandle = false;
           self.handle.innerHTML = message.name;
-          self._addClient(message.id, message.name, 'ghost-2.png');
+          self._addClient(message.id, message.name, 'skelly-0.png');
 
         break;
       case 'player':
         // TODO set position and velocity
-        self._addPlayer(message.id, message.name, 'ghost-2.png',
+        self._addPlayer(message.id, message.name, 'skelly-0.png',
           message.position, message.velocity);
         console.log('added ' + message.name + ' at (' + message.position.x + ', ' + message.position.y + ')');
         break;
@@ -235,7 +237,9 @@ Game.prototype._setupServerConnection = function(server) {
         break;
       case 'chat':
         var pid = message.id;
-        self.appendChatMessage(pid, message.message);
+        if (pid in self.players) {
+          self.appendChatMessage(self.players[pid].name, message.message);
+        }
         break;
       case 'special':
         // self.applySpecial(); TODO
@@ -254,7 +258,7 @@ Game.prototype._setupServerConnection = function(server) {
           console.log('adding all players');
           Object.keys(players).forEach(function(name) {
             var player = players[name];
-            self._addPlayer(player.id, name, 'ghost-2.png',
+            self._addPlayer(player.id, name, 'skelly-0.png',
               player.position, player.velocity);
           });
         }
@@ -287,22 +291,23 @@ Game.prototype.applyMove = function(pid, position, velocity) {
   }
 };
 
-Game.prototype.appendChatMessage = function(pid, message) {
+Game.prototype.appendChatMessage = function(name, message) {
   var self = this;
 
-  // console.log('appendChatMessage: pid=' + pid + ', message=' + message);
-  var player = self.players[pid];
-  if (player) {
-    var name = player.name;
-    var li = document.createElement("li");
-    var textnode = document.createTextNode(message);
-    li.innerHTML = '<a class="user" onclick=\'alert("clicked")\'>&lt'+name+'&gt&nbsp</a>';
-    li.appendChild(textnode);
-    self.messages.appendChild(li);
-    // lock scroller to last message
-    self.log.scrollTop = self.log.scrollHeight;
+  var textnode = document.createTextNode(message);
+  var li = document.createElement("li");
+  li.innerHTML = '<a class="user" onclick=\'alert("clicked")\'>&lt'+name+'&gt&nbsp</a>';
+  if (message[0] === '>') {
+    var span = document.createElement('span');
+    span.className = 'quote';
+    span.appendChild(textnode);
+    li.appendChild(span);
   } else {
-    console.log('something is wrong');
+    li.appendChild(textnode);
   }
+  self.messages.appendChild(li);
+
+  // lock scroller to last message
+  self.log.scrollTop = self.log.scrollHeight;
 
 };

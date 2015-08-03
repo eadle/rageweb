@@ -27,6 +27,10 @@ body {
   line-height: 1.5em;
 }
 
+.quote {
+  color: #00FF00;
+}
+
 .user {
   color: #FF0000;
   cursor: pointer;
