@@ -1,5 +1,5 @@
 body {
-  background-color: #888888;
+  background-color: #555555;
   font-family: 'Press Start 2P', cursive;
   margin: auto;
 }   
@@ -12,7 +12,7 @@ body {
 
 #chat-log {
   width: 512px;
-  height: 200px;
+  height: 100px;
   font-size: 8px;
   font-family: 'Press Start 2P', cursive;    
   margin: auto;
@@ -56,7 +56,7 @@ body {
 
 #holder {
   width: 512px;
-  height: 530px;
+  height: 460px;
   position: absolute;
   top:0;
   bottom: 0;
