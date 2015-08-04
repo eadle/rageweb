@@ -6,8 +6,6 @@ function Player(id, name, sprite, position, velocity) {
   self.id = id || undefined;
   self.name = name || undefined;
   self.keystate = 0;
-  self.laststate = 0;
-  self.lasttime = 0;
   self.sprite = sprite;
   self.position = position || {x: 0, y: 0};
   self.velocity = velocity || {x: 0, y: 0};
@@ -19,9 +17,9 @@ Player.prototype.dispose = function() {
   var self = this;
   if (self.sprite) {
     self.sprite.kill();
-    console.log('killed sprite');
+    // console.log('killed sprite');
   }
-  console.log(self.name + ' disconnected...');
+  // console.log(self.name + ' disconnected...');
 };
 
 Player.prototype.update = function(dt) {

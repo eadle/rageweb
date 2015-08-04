@@ -215,9 +215,9 @@ Game.prototype._setupServerConnection = function(server) {
           self._addClient(message.id, message.name, 'skelly-0.png');
         break;
       case 'player':
-        // TODO set position and velocity
         self._addPlayer(message.id, message.name, 'skelly-0.png',
           message.position, message.velocity);
+        // self.appendMessage(message.name + ' connected');
         break;
       case 'move':
         var position = message.position,
@@ -241,6 +241,7 @@ Game.prototype._setupServerConnection = function(server) {
       case 'disconnect':
         var player = self.players[message.id];
         if (player) {
+          // self.appendMessage(player.name + ' disconnected');
           player.dispose();
           delete self.players[message.id];
         }
@@ -286,7 +287,8 @@ Game.prototype.appendMessage = function(message) {
 
 Game.prototype.selectUser = function(name) {
   var self = this;
-  alert(name + 'clicked');
+  //alert(name + 'clicked');
+  alert('>implying this is implemented');
   // TODO ...
 };
 
