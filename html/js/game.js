@@ -32,8 +32,6 @@ function Game(options) {
 
   // preload function
   function preload() {
-    console.log('preload');
-
     self.game.onPause.add(function() {
       self.hasClientFocus = false;
       if (self.client) {
@@ -269,8 +267,8 @@ Game.prototype.appendMessage = function(message) {
 
 Game.prototype.selectUser = function(name) {
   var self = this;
-  alert(name + ' clicked');
-  // TODO mute, private message, trade etc.
+  alert(name + 'clicked');
+  // TODO ...
 };
 
 Game.prototype.appendUserMessage = function(name, message) {
@@ -311,15 +309,20 @@ Game.prototype._setupChatInput = function() {
   self.form.addEventListener("submit", function(event) {
     // prevents page refresh
     event.preventDefault();
+
     var message = self.input.value;
-    if (self.input.value !== '') {
+    if (message) {
       if (!self.requestingHandle) {
-        self.appendUserMessage(self.client.name, message);
-        // send message to server
-        self.ws.send(JSON.stringify({
-          'type': 'chat',
-          'message': message
-        }));
+        message = message.replace(/^\s*|^\s$/gm, '');
+        if (message !== '') {
+          self.appendUserMessage(self.client.name, message);
+          // send message to server
+          self.ws.send(JSON.stringify({
+            'type': 'chat',
+            'message': message
+          }));
+        }
+
       } else {
         // send name to server
         self.ws.send(JSON.stringify({
