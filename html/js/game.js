@@ -328,33 +328,33 @@ Game.prototype._setupChatInput = function() {
   self.form.addEventListener("submit", function(event) {
     // prevents page refresh
     event.preventDefault();
-
     var message = self.input.value;
-    if (message) {
-      if (!self.requestingHandle) {
-        if (message.length >= 300) {
-          message = message.substring(0, 300) + '...';
-          console.log('truncated message');
-        }
-        message = message.replace(/^\s*|^\s$/gm, '');
-        if (message !== '') {
-          self.appendUserMessage(self.client.name, message);
-          // send message to server
-          self.ws.send(JSON.stringify({
-            'type': 'chat',
-            'message': message
-          }));
-        }
-
-      } else {
-        // send name to server
+    // enforce 300 char limit
+    if (message.length >= 300) {
+      // psssh, nothing personal kid
+      message = message.substring(0, 300) + '...';
+    }
+    if (!self.requestingHandle) {
+      // remove whitespace
+      message = message.replace(/^\s*|^\s$/gm, '');
+      if (message !== '') {
+        // add message to chat log
+        self.appendUserMessage(self.client.name, message);
+        // send message to server
         self.ws.send(JSON.stringify({
-          'type': 'name',
-          'name': message
+          'type': 'chat',
+          'message': message
         }));
       }
-      self.input.value = '';
+    } else {
+      // send name to server
+      self.ws.send(JSON.stringify({
+        'type': 'name',
+        'name': message
+      }));
     }
+    // clear input field
+    self.input.value = '';
   }, false);
 
 };
