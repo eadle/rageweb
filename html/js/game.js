@@ -26,12 +26,18 @@ function Game(options) {
   self._setupChatInput();
 
   // setup game
-  self.game = new Phaser.Game(512, 300, Phaser.CANVAS, 'phaser-example', {
+  self.game = new Phaser.Game(512, 320, Phaser.CANVAS, 'phaser-example', {
     preload: preload, create: create, update: update, render: render
   });
 
+  // testing tilemaps
+  var tilemapFile = 'assets/test.json',
+      layer = null,
+      map = null;
+
   // preload function
   function preload() {
+    //self.game.stage.disableVisibilityChange = true;
     self.game.onPause.add(function() {
       self.hasClientFocus = false;
       if (self.client) {
@@ -46,7 +52,11 @@ function Game(options) {
 
 	  self.game.stage.backgroundColor = '#222244';
     self.game.load.atlas('dawnlike', 'assets/dawnlike.png', 'assets/dawnlike.json');
-    //self.game.stage.disableVisibilityChange = true;
+
+    // testing tilemaps
+    self.game.load.tilemap('map', tilemapFile, null, Phaser.Tilemap.TILED_JSON);
+    self.game.load.image('tiles', 'assets/dawnlike.png'); // FIXME shouldn't load twice
+
     self.lasttime = self.game.time.now;
   }
 
@@ -62,6 +72,13 @@ function Game(options) {
     self._setupServerConnection(server);
 	  self.game.world.setBounds(0, 0, 512, 300);
 	  cursors = self.game.input.keyboard.createCursorKeys();
+
+    map = self.game.add.tilemap('map');
+    map.addTilesetImage('dawnlike', 'tiles');
+    layer = map.createLayer('map');
+    layer.scale.setTo(2.0, 2.0);
+    layer.smoothed = false;
+
     self.spriteGroup = self.game.add.group();
   }
 
@@ -73,6 +90,8 @@ function Game(options) {
       self._updateClient(dt);
     }
     self.lasttime = now;
+    // lazy fix
+    self.spriteGroup.sort('y', Phaser.Group.SORT_ASCENDING);
   }
 
   function render() {
