@@ -267,6 +267,12 @@ Game.prototype.appendMessage = function(message) {
 
 };
 
+Game.prototype.selectUser = function(name) {
+  var self = this;
+  alert(name + ' clicked');
+  // TODO mute, private message, trade etc.
+};
+
 Game.prototype.appendUserMessage = function(name, message) {
   var self = this;
 
@@ -277,7 +283,7 @@ Game.prototype.appendUserMessage = function(name, message) {
 
   var textnode = document.createTextNode(message);
   var li = document.createElement("li");
-  li.innerHTML = '<a class="user" onclick=\'alert("clicked")\'>&lt'+name+'&gt&nbsp</a>';
+  li.innerHTML = '<a class="user" onclick=\'game.selectUser("'+name+'")\'>&lt'+name+'&gt&nbsp</a>';
   if (message[0] === '>') {
     var span = document.createElement('span');
     span.className = 'quote';
