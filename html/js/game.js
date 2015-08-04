@@ -16,12 +16,14 @@ function Game(options) {
   self.spriteGroup = null;
 
   // setup chat 
+  self.unseenMessages = 0;
+  self.hasClientFocus = true;
   self.log = document.getElementById('chat-log'),
   self.input = document.getElementById('chat-input'),
   self.form = document.getElementById('chat-form'),
   self.messages = document.getElementById('chat-messages'),
   self.handle = document.getElementById('handle');
-  self._setupInputEvents();
+  self._setupChatInput();
 
   // setup game
   self.game = new Phaser.Game(512, 300, Phaser.CANVAS, 'phaser-example', {
@@ -32,9 +34,21 @@ function Game(options) {
   function preload() {
     console.log('preload');
 
+    self.game.onPause.add(function() {
+      self.hasClientFocus = false;
+      if (self.client) {
+        self.client.keystate = 0;
+      }
+    }, self);
+    self.game.onResume.add(function() {
+      self.unseenMessages = 0;
+      self.hasClientFocus = true;
+      document.title = 'skellyweb';
+    }, self);
+
 	  self.game.stage.backgroundColor = '#222244';
     self.game.load.atlas('dawnlike', 'assets/dawnlike.png', 'assets/dawnlike.json');
-    self.game.stage.disableVisibilityChange = true;
+    //self.game.stage.disableVisibilityChange = true;
     self.lasttime = self.game.time.now;
   }
 
@@ -97,14 +111,13 @@ Game.prototype._addClient = function(id, name, file, position, velocity) {
   var pos = {x: self.game.world.centerX, y: self.game.world.centerY};
   var sprite = self._createPlayerSprite(file, position);
   self.client = new Player(id, name, sprite, pos);
-  self._setupClientCallbacks();
+  self._setupMoveCallbacks();
   self._broadcastClientState();
 };
 
-Game.prototype._setupClientCallbacks = function() {
+Game.prototype._setupMoveCallbacks = function() {
   var self = this;
 
-  // moving
   var upKey = self.game.input.keyboard.addKey(Phaser.Keyboard.UP);
   upKey.onDown.add(function(){self.client.keystate |= UP_MASK}, self);
   upKey.onUp.add(function()  {self.client.keystate &= ~UP_MASK}, self);
@@ -117,12 +130,6 @@ Game.prototype._setupClientCallbacks = function() {
   var rightKey = self.game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
   rightKey.onDown.add(function() {self.client.keystate |= RIGHT_MASK}, self);
   rightKey.onUp.add(function()   {self.client.keystate &= ~RIGHT_MASK}, self);
-
-  // jump
-  // TODO
-
-  // talk
-  // TODO
 
 };
 
@@ -154,42 +161,6 @@ Game.prototype._updatePlayers = function(dt) {
   });
 };
 
-Game.prototype._setupInputEvents = function() {
-  var self = this;
-
-  // disables pasta
-  self.input.onpaste = function(e) {
-    // e.preventDefault(); // >:D
-  };
-  
-  self.requestingHandle = true;
-  self.form.addEventListener("submit", function(event) {
-    // don't refresh the page
-    event.preventDefault();
-
-    var message = self.input.value;
-    if (self.input.value !== '') {
-      if (!self.requestingHandle) {
-        // add message to chat messages
-        self.appendChatMessage(self.client.name, message);
-        // send message to server
-        self.ws.send(JSON.stringify({
-          'type': 'chat',
-          'message': message
-        }));
-      } else {
-        // send name to server
-        self.ws.send(JSON.stringify({
-          'type': 'name',
-          'name': message
-        }));
-      }
-      self.input.value = '';
-    }
-
-  }, false);
-
-};
 
 Game.prototype._broadcastClientState = function(data) {
   var self = this;
@@ -201,6 +172,14 @@ Game.prototype._broadcastClientState = function(data) {
       'position': self.client.position,
       'velocity': self.client.velocity
     }));
+  }
+};
+
+Game.prototype.applyMove = function(pid, position, velocity) {
+  var self = this;
+  if (pid in self.players) {
+    self.players[pid].setPosition(position);
+    self.players[pid].setVelocity(velocity);
   }
 };
 
@@ -217,13 +196,11 @@ Game.prototype._setupServerConnection = function(server) {
           self.requestingHandle = false;
           self.handle.innerHTML = message.name;
           self._addClient(message.id, message.name, 'skelly-0.png');
-
         break;
       case 'player':
         // TODO set position and velocity
         self._addPlayer(message.id, message.name, 'skelly-0.png',
           message.position, message.velocity);
-        console.log('added ' + message.name + ' at (' + message.position.x + ', ' + message.position.y + ')');
         break;
       case 'move':
         var position = message.position,
@@ -238,7 +215,7 @@ Game.prototype._setupServerConnection = function(server) {
       case 'chat':
         var pid = message.id;
         if (pid in self.players) {
-          self.appendChatMessage(self.players[pid].name, message.message);
+          self.appendUserMessage(self.players[pid].name, message.message);
         }
         break;
       case 'special':
@@ -267,32 +244,36 @@ Game.prototype._setupServerConnection = function(server) {
     }   
 
   };
-
   self.ws.onopen = function() {
     console.log('connected to server');
   };
-
   self.ws.onclose = function() {
     console.log('disconnected to server');
   };
-
   self.ws.onerror = function(err) {
     throw err;
   };
-  
 
 };
 
-Game.prototype.applyMove = function(pid, position, velocity) {
+Game.prototype.appendMessage = function(message) {
   var self = this;
-  if (pid in self.players) {
-    self.players[pid].setPosition(position);
-    self.players[pid].setVelocity(velocity);
+
+  var textnode = document.createTextNode(message);
+  var li = document.createElement("li");
+  li.appendChild(textnode);
+  self.messages.appendChild(li);
+  self.log.scrollTop = self.log.scrollHeight;
+
+};
+
+Game.prototype.appendUserMessage = function(name, message) {
+  var self = this;
+
+  if (!self.hasClientFocus) {
+    self.unseenMessages += 1;
+    document.title = '(' + self.unseenMessages + ') skellyweb';
   }
-};
-
-Game.prototype.appendChatMessage = function(name, message) {
-  var self = this;
 
   var textnode = document.createTextNode(message);
   var li = document.createElement("li");
@@ -311,3 +292,38 @@ Game.prototype.appendChatMessage = function(name, message) {
   self.log.scrollTop = self.log.scrollHeight;
 
 };
+
+Game.prototype._setupChatInput = function() {
+  var self = this;
+  self.requestingHandle = true;
+
+  self.input.onpaste = function(e) {
+    // prevents pasta
+    // e.preventDefault();
+  };
+
+  self.form.addEventListener("submit", function(event) {
+    // prevents page refresh
+    event.preventDefault();
+    var message = self.input.value;
+    if (self.input.value !== '') {
+      if (!self.requestingHandle) {
+        self.appendUserMessage(self.client.name, message);
+        // send message to server
+        self.ws.send(JSON.stringify({
+          'type': 'chat',
+          'message': message
+        }));
+      } else {
+        // send name to server
+        self.ws.send(JSON.stringify({
+          'type': 'name',
+          'name': message
+        }));
+      }
+      self.input.value = '';
+    }
+  }, false);
+
+};
+
