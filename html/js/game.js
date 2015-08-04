@@ -328,16 +328,18 @@ Game.prototype._setupChatInput = function() {
   self.form.addEventListener("submit", function(event) {
     // prevents page refresh
     event.preventDefault();
+
     var message = self.input.value;
+    // remove unnecessary whitespace
+    message = message.replace(/^\s*|^\s$/gm, '');
     // enforce 300 char limit
     if (message.length >= 300) {
       // psssh, nothing personal kid
       message = message.substring(0, 300) + '...';
     }
-    if (!self.requestingHandle) {
-      // remove whitespace
-      message = message.replace(/^\s*|^\s$/gm, '');
-      if (message !== '') {
+
+    if (message !== '') {
+      if (!self.requestingHandle) {
         // add message to chat log
         self.appendUserMessage(self.client.name, message);
         // send message to server
@@ -345,16 +347,18 @@ Game.prototype._setupChatInput = function() {
           'type': 'chat',
           'message': message
         }));
+      } else {
+        // send name to server
+        self.ws.send(JSON.stringify({
+          'type': 'name',
+          'name': message
+        }));
       }
-    } else {
-      // send name to server
-      self.ws.send(JSON.stringify({
-        'type': 'name',
-        'name': message
-      }));
     }
+
     // clear input field
     self.input.value = '';
+
   }, false);
 
 };
