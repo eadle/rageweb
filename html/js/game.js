@@ -332,6 +332,10 @@ Game.prototype._setupChatInput = function() {
     var message = self.input.value;
     if (message) {
       if (!self.requestingHandle) {
+        if (message.length >= 300) {
+          message = message.substring(0, 300) + '...';
+          console.log('truncated message');
+        }
         message = message.replace(/^\s*|^\s$/gm, '');
         if (message !== '') {
           self.appendUserMessage(self.client.name, message);
