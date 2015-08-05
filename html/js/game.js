@@ -28,7 +28,7 @@ function Game(options) {
   self._setupChatInput();
 
   // setup game
-  self.game = new Phaser.Game(512, 320, Phaser.CANVAS, 'phaser-example', {
+  self.game = new Phaser.Game(256, 160, Phaser.CANVAS, 'phaser-example', {
     preload: preload, create: create, update: update, render: render
   });
 
@@ -57,6 +57,10 @@ function Game(options) {
     }, self);
 
 	  self.game.stage.backgroundColor = '#222244';
+    self.game.scale.maxWidth = 512;
+    self.game.scale.maxHeight = 320;
+    self.game.scale.pageAlignHorizontally = true;
+    self.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
 
     // load texture atlas
     self.game.load.atlas('dawnlike', 'assets/dawnlike.png', 'assets/dawnlike.json');
@@ -174,7 +178,7 @@ Game.prototype._updateClient = function() {
   var self = this;
 
   var client = self.client,
-      speed = 200;
+      speed = 150;
   var vx = 0,
       vy = 0;
   if (client.keystate & LEFT_MASK)  vx -= speed;
