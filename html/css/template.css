@@ -5,11 +5,13 @@ body {
 }   
 
 canvas {
+  image-resizing: pixelated;
   image-rendering: optimizeSpeed;
   image-rendering: -moz-crisp-edges;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: optimize-contrast;
   -ms-interpolation-mode: nearest-neighbor;
+  image-rendering: pixelated;
 }
 
 #chat-messages {
@@ -57,6 +59,7 @@ canvas {
   word-wrap: break-word;
   text-align: left;
   resize: none;
+  box-sizing: border-box;
 }
 
 #chat-hidden {
