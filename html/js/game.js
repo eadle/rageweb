@@ -1,7 +1,7 @@
 'use strict';
 
 // debugging -- remove me
-var startPos = {x:100,y:100};
+var startPos = {x:5*16,y:5*16};
 var LEFT_MASK  = 1,
     RIGHT_MASK = 1 << 1,
     UP_MASK    = 1 << 2,
@@ -152,6 +152,8 @@ Game.prototype._addClient = function(id, name, file, position, velocity) {
   var sprite = self._createPlayerSprite(file, position);
   self.game.physics.enable(sprite);
   self.client = new Player(id, name, sprite, position);
+
+  self.client.setCameraFollow(self.game);
   self._setupMoveCallbacks();
   self._broadcastClientState();
 };
@@ -254,8 +256,7 @@ Game.prototype._setupServerConnection = function(server) {
       case 'player':
         self._addPlayer(message.id, message.name, 'skelly-0.png',
           message.position, message.velocity);
-        // self.appendMessage(message.name + ' connected');
-          console.log(message.name + ' connected');
+          self.appendSessionMessage('[' + message.name + ' joined]')
         break;
       case 'move':
         var position = message.position,
@@ -279,8 +280,7 @@ Game.prototype._setupServerConnection = function(server) {
       case 'disconnect':
         var player = self.players[message.id];
         if (player) {
-          // self.appendMessage(player.name + ' disconnected');
-          console.log(player.name + ' disconnected');
+          self.appendSessionMessage('[' + player.name + ' left]')
           player.dispose();
           delete self.players[message.id];
         }
@@ -289,9 +289,10 @@ Game.prototype._setupServerConnection = function(server) {
         // add players to the world
         var players = message.players;
         if (typeof players === 'object') {
-          console.log('adding players: ');
+          console.log('active users: ');
           Object.keys(players).forEach(function(name) {
             var player = players[name];
+            console.log(name);
             self._addPlayer(player.id, name, 'skelly-0.png',
               player.position, player.velocity);
           });
@@ -329,6 +330,19 @@ Game.prototype.selectUser = function(name) {
   //alert(name + 'clicked');
   alert('>implying this is implemented');
   // TODO ...
+};
+
+Game.prototype.appendSessionMessage = function(message) {
+  var self = this;
+  var textnode = document.createTextNode(message);
+  var li = document.createElement("li");
+  var span = document.createElement('span');
+  span.className = 'session';
+  span.appendChild(textnode);
+  li.appendChild(span);
+  self.messages.appendChild(li)
+  // lock scroller to last message
+  self.log.scrollTop = self.log.scrollHeight;
 };
 
 Game.prototype.appendUserMessage = function(name, message) {

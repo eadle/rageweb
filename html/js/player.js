@@ -19,8 +19,8 @@ function Player(id, name, sprite, position, velocity) {
   self.setPosition(position);
   self.setVelocity(velocity);
 
-  console.log('created player: name='+name+', id='+id
-    +', position='+position + ', velocity=' + velocity);
+  // console.log('created player: name='+name+', id='+id
+  //   +', position='+position + ', velocity=' + velocity);
 }
 
 Player.prototype.dispose = function() {
@@ -41,4 +41,20 @@ Player.prototype.setVelocity = function(velocity) {
   self.sprite.body.velocity.x = velocity.x;
   self.sprite.body.velocity.y = velocity.y;
   // console.log('set ' + self.name + ' velocity');
+};
+
+Player.prototype.setCameraFollow = function(game) {
+  var self = this;
+
+  game.camera.follow(self.sprite);
+
+  var p = 0.2;
+  var width = p*game.world.width,
+      height = p*game.world.height,
+      pos = {
+        x: game.world.centerX/2 - width/2 - self.sprite.width/2,
+        y: game.world.centerY/2 - height/2 - self.sprite.height/2
+      };
+  var deadzone = new Phaser.Rectangle(pos.x, pos.y, width, height);
+  game.camera.deadzone = deadzone;
 };

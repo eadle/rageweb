@@ -37,9 +37,12 @@ canvas {
   line-height: 1.5em;
 }
 
+.session {
+  color: #FFFF00;
+}
+
 .quote {
   color: #00FF00;
-  /*color: #B5BD68;*/
 }
 
 .user {
