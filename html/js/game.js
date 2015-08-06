@@ -292,7 +292,7 @@ Game.prototype._setupServerConnection = function(server) {
           console.log('active users: ');
           Object.keys(players).forEach(function(name) {
             var player = players[name];
-            console.log(name);
+            console.log('\t' + name);
             self._addPlayer(player.id, name, 'skelly-0.png',
               player.position, player.velocity);
           });
