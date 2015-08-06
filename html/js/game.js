@@ -78,7 +78,7 @@ function Game(options) {
     self.game.physics.startSystem(Phaser.Physics.ARCADE);
 
     // connect to server
-    var server = 'ws://167.114.185.203:8188';
+    var server = 'ws://' + window.location.hostname + ':8188';
     if (typeof server !== 'string') {
       throw new Error('expects valid server');
     }
