@@ -39,11 +39,12 @@ function Game(options) {
 
   // preload function
   function preload() {
-    //self.game.stage.disableVisibilityChange = true;
+    self.game.stage.disableVisibilityChange = true;
     self.game.onPause.add(function() {
       self.hasClientFocus = false;
       if (self.client) {
-        self.client.keystate = 0;
+        self.client.setKeystate(0);
+        self._broadcastClientState();
       }
     }, self);
     self.game.onResume.add(function() {
@@ -209,7 +210,7 @@ Game.prototype._setupServerConnection = function(server) {
   self.ws = new WebSocket(server);
 
   self.ws.onmessage = function(event) {
-    //console.log('received: ' + event.data);
+    console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
