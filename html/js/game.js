@@ -2,10 +2,6 @@
 
 // debugging -- remove me
 var startPos = {x:5*16,y:5*16};
-var LEFT_MASK  = 1,
-    RIGHT_MASK = 1 << 1,
-    UP_MASK    = 1 << 2,
-    DOWN_MASK  = 1 << 3;
 
 function Game(options) {
   var self = this;
@@ -43,7 +39,7 @@ function Game(options) {
 
   // preload function
   function preload() {
-    //self.game.stage.disableVisibilityChange = true;
+    self.game.stage.disableVisibilityChange = true;
     self.game.onPause.add(function() {
       self.hasClientFocus = false;
       if (self.client) {
@@ -71,7 +67,7 @@ function Game(options) {
   }
 
 
-  var cursors;
+  self.cursors = null;
   function create() {
 
     // start physics engine
@@ -99,7 +95,7 @@ function Game(options) {
     self.map.setCollisionBetween(0, 10000, true, self.collision);
 
 	  self.game.world.setBounds(0, 0, 512, 300);
-	  cursors = self.game.input.keyboard.createCursorKeys();
+	  self.cursors = self.game.input.keyboard.createCursorKeys();
 
     self.spriteGroup = self.game.add.group();
 
@@ -139,14 +135,14 @@ Game.prototype._createPlayerSprite = function(file, pos) {
   return sprite;
 };
 
-Game.prototype._addPlayer = function(id, name, file, position, velocity) {
+Game.prototype._addPlayer = function(id, name, file, position, keystate) {
   var self = this;
   var sprite = self._createPlayerSprite(file, position);
   self.game.physics.enable(sprite);
-  self.players[id] = new Player(id, name, sprite, position, velocity);
+  self.players[id] = new Player(id, name, sprite, position, keystate);
 };
 
-Game.prototype._addClient = function(id, name, file, position, velocity) {
+Game.prototype._addClient = function(id, name, file, position, keystate) {
   var self = this;
   position = position || startPos;
   var sprite = self._createPlayerSprite(file, position);
@@ -154,57 +150,33 @@ Game.prototype._addClient = function(id, name, file, position, velocity) {
   self.client = new Player(id, name, sprite, position);
 
   self.client.setCameraFollow(self.game);
-  self._setupMoveCallbacks();
   self._broadcastClientState();
-};
-
-Game.prototype._setupMoveCallbacks = function() {
-  var self = this;
-
-  var upKey = self.game.input.keyboard.addKey(Phaser.Keyboard.UP);
-  upKey.onDown.add(function(){self.client.keystate |= UP_MASK}, self);
-  upKey.onUp.add(function()  {self.client.keystate &= ~UP_MASK}, self);
-  var downKey = self.game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
-  downKey.onDown.add(function(){self.client.keystate |= DOWN_MASK}, self);
-  downKey.onUp.add(function()  {self.client.keystate &= ~DOWN_MASK}, self);
-  var leftKey = self.game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
-  leftKey.onDown.add(function() {self.client.keystate |= LEFT_MASK}, self);
-  leftKey.onUp.add(function()   {self.client.keystate &= ~LEFT_MASK}, self);
-  var rightKey = self.game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
-  rightKey.onDown.add(function() {self.client.keystate |= RIGHT_MASK}, self);
-  rightKey.onUp.add(function()   {self.client.keystate &= ~RIGHT_MASK}, self);
-
 };
 
 Game.prototype._updateClient = function() {
   var self = this;
 
-  var client = self.client,
-      speed = 150;
-  var vx = 0,
-      vy = 0;
-  if (client.keystate & LEFT_MASK)  vx -= speed;
-  if (client.keystate & RIGHT_MASK) vx += speed;
-  if (client.keystate & UP_MASK)    vy -= speed;
-  if (client.keystate & DOWN_MASK)  vy += speed;
-  client.sprite.body.velocity.x = vx;
-  client.sprite.body.velocity.y = vy;
+  var state = 0;
+  if (self.cursors.left.isDown)  state |= Player.LEFT_MASK;
+  if (self.cursors.right.isDown) state |= Player.RIGHT_MASK;
+  if (self.cursors.up.isDown)    state |= Player.UP_MASK;
+  if (self.cursors.down.isDown)  state |= Player.DOWN_MASK;
 
-  self.game.physics.arcade.collide(self.client.sprite, self.collision);
+  self.client.update();
 
-  if (client.keystate !== client.laststate) {
-    client.lasttime = self.game.time.now;
-    client.laststate = client.keystate;
-    // TODO attach keystate to client state broadcast
+  if (state !== self.client.keystate) {
+    self.client.keystate = state;
     self._broadcastClientState();
   }
+
+  self.game.physics.arcade.collide(self.client.sprite, self.collision);
 
 };
 
 Game.prototype._updatePlayers = function(dt) {
   var self = this;
   Object.keys(self.players).forEach(function(player) {
-    //self.players[player].update(dt);
+    self.players[player].update();
     self.game.physics.arcade.collide(self.players[player].sprite, self.collision);
   });
 };
@@ -214,28 +186,20 @@ Game.prototype._broadcastClientState = function(data) {
   var self = this;
 
   if (self.client) {
-    var position = {
-      x: self.client.sprite.x,
-      y: self.client.sprite.y
-    };
-    var velocity = {
-      x: self.client.sprite.body.velocity.x,
-      y: self.client.sprite.body.velocity.y
-    };
     self.ws.send(JSON.stringify({
       'type': 'move',
       'id': self.client.id,
-      'position': position,
-      'velocity': velocity
+      'position': {x: self.client.sprite.x, y: self.client.sprite.y},
+      'keystate': self.client.keystate
     }));
   }
 };
 
-Game.prototype.applyMove = function(pid, position, velocity) {
+Game.prototype.applyMove = function(pid, position, keystate) {
   var self = this;
   if (pid in self.players) {
     self.players[pid].setPosition(position);
-    self.players[pid].setVelocity(velocity);
+    self.players[pid].setKeystate(keystate);
   }
 };
 
@@ -255,14 +219,14 @@ Game.prototype._setupServerConnection = function(server) {
         break;
       case 'player':
         self._addPlayer(message.id, message.name, 'skelly-0.png',
-          message.position, message.velocity);
+          message.position, message.keystate);
           self.appendSessionMessage('[' + message.name + ' joined]')
         break;
       case 'move':
         var position = message.position,
-            velocity = message.velocity,
+            keystate = message.keystate,
             pid = message.id;
-        self.applyMove(pid, position, velocity);
+        self.applyMove(pid, position, keystate);
         break;
       case 'jump':
         var pid = message.id;
@@ -294,7 +258,7 @@ Game.prototype._setupServerConnection = function(server) {
             var player = players[name];
             console.log('\t' + name);
             self._addPlayer(player.id, name, 'skelly-0.png',
-              player.position, player.velocity);
+              player.position, player.keystate);
           });
         }
         break;
