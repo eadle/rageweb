@@ -39,7 +39,7 @@ function Game(options) {
 
   // preload function
   function preload() {
-    self.game.stage.disableVisibilityChange = true;
+    //self.game.stage.disableVisibilityChange = true;
     self.game.onPause.add(function() {
       self.hasClientFocus = false;
       if (self.client) {

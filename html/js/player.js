@@ -39,7 +39,7 @@ Player.prototype.setPosition = function(position) {
 Player.prototype.setKeystate = function(keystate) {
   var self = this;
   self.keystate = keystate;
-  console.log('set keystate for ' + self.name + ': ' + self.keystate);
+  //console.log('set keystate for ' + self.name + ': ' + self.keystate);
 };
 
 Player.prototype.setVelocity = function(velocity) {
