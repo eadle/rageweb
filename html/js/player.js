@@ -6,11 +6,15 @@ function Player(id, name, sprite, position, keystate) {
   self.id = id || undefined;
   self.name = name || undefined;
 
+
+
+  sprite.body.setZeroDamping();
+  sprite.body.fixedRotation = true;
+  sprite.body.width = 8;
+  sprite.body.height = 2;
+  sprite.body.offset.x = 4;
+  sprite.body.offset.y = 14;
   self.sprite = sprite;
-  self.sprite.body.width = 8;
-  self.sprite.body.height = 2;
-  self.sprite.body.offset.x = 4;
-  self.sprite.body.offset.y = 14;
 
   var position = position || {x: 0, y: 0};
   var velocity = velocity || {x: 0, y: 0};
@@ -30,15 +34,15 @@ Player.prototype.dispose = function() {
 
 Player.prototype.setPosition = function(position) {
   var self = this;
-  self.sprite.x = position.x;
-  self.sprite.y = position.y;
+  self.sprite.body.x = position.x;
+  self.sprite.body.y = position.y;
   // console.log('set ' + self.name + ' position');
 };
 
 Player.prototype.setKeystate = function(keystate) {
   var self = this;
   self.keystate = keystate; // FIXME initially receiving undefined
-  console.log('set keystate for ' + self.name + ': ' + self.keystate);
+  // console.log('set keystate for ' + self.name + ': ' + self.keystate);
 };
 
 

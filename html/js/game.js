@@ -1,7 +1,6 @@
 'use strict';
 
-// debugging -- remove me
-var startPos = {x:5*16,y:5*16};
+
 
 function Game(options) {
   var self = this;
@@ -39,7 +38,7 @@ function Game(options) {
 
   // preload function
   function preload() {
-    self.game.stage.disableVisibilityChange = true;
+    //self.game.stage.disableVisibilityChange = true;
     self.game.onPause.add(function() {
       self.hasClientFocus = false;
       if (self.client) {
@@ -72,7 +71,7 @@ function Game(options) {
   function create() {
 
     // start physics engine
-    self.game.physics.startSystem(Phaser.Physics.ARCADE);
+    self.game.physics.startSystem(Phaser.Physics.P2JS);
 
     // connect to server
     var server = 'ws://' + window.location.hostname + ':8188';
@@ -94,6 +93,8 @@ function Game(options) {
     self.collision.resizeWorld();
     // sprites collide with collision layer
     self.map.setCollisionBetween(0, 10000, true, self.collision);
+    // convert the tilemap layer into bodies
+    self.game.physics.p2.convertTilemap(self.map, self.collision);
 
 	  self.game.world.setBounds(0, 0, 512, 300);
 	  self.cursors = self.game.input.keyboard.createCursorKeys();
@@ -103,10 +104,11 @@ function Game(options) {
   }
 
   function update() {
-    self._updatePlayers();
+
     if (self.client) {
       self._updateClient();
     }
+    self._updatePlayers();
     self.spriteGroup.sort('y', Phaser.Group.SORT_ASCENDING);
   }
 
@@ -118,40 +120,17 @@ function Game(options) {
 
 }
 
-Game.prototype._createPlayerSprite = function(file, pos) {
+Game.prototype._broadcastClientState = function(data) {
   var self = this;
-  pos = pos || startPos;
 
-  var sprite = new Phaser.Sprite(self.game, pos.x, pos.y, 'dawnlike', file);
-  //sprite.scale.setTo(2.0, 2.0);
-  //sprite.anchor.setTo(0.5, 0.5);
-  sprite.smoothed = false;
-
-  // testing idle animation
-  sprite.animations.add('skelly-idle', ['skelly-0.png', 'skelly-1.png']);
-  sprite.animations.play('skelly-idle', 2, true);
-
-  self.spriteGroup.add(sprite);
-
-  return sprite;
-};
-
-Game.prototype._addPlayer = function(id, name, file, position, keystate) {
-  var self = this;
-  var sprite = self._createPlayerSprite(file, position);
-  self.game.physics.enable(sprite);
-  self.players[id] = new Player(id, name, sprite, position, keystate);
-};
-
-Game.prototype._addClient = function(id, name, file, position, keystate) {
-  var self = this;
-  position = position || startPos;
-  var sprite = self._createPlayerSprite(file, position);
-  self.game.physics.enable(sprite);
-  self.client = new Player(id, name, sprite, position);
-
-  self.client.setCameraFollow(self.game);
-  self._broadcastClientState();
+  if (self.client) {
+    self.ws.send(JSON.stringify({
+      'type': 'move',
+      'id': self.client.id,
+      'position': {x: self.client.sprite.x, y: self.client.sprite.y},
+      'keystate': self.client.keystate
+    }));
+  }
 };
 
 Game.prototype._updateClient = function() {
@@ -170,30 +149,63 @@ Game.prototype._updateClient = function() {
     self._broadcastClientState();
   }
 
-  self.game.physics.arcade.collide(self.client.sprite, self.collision);
+  // FIXME
+  // self.game.physics.arcade.collide(self.client.sprite, self.collision);
 
 };
 
 Game.prototype._updatePlayers = function(dt) {
   var self = this;
-  Object.keys(self.players).forEach(function(player) {
-    self.players[player].update();
-    self.game.physics.arcade.collide(self.players[player].sprite, self.collision);
+  Object.keys(self.players).forEach(function(id) {
+    var player = self.players[id];
+    player.update();
+    // FIXME
+    //self.game.physics.arcade.collide(player.sprite, self.collision);
+    if (self.client) {
+      // FIXME
+      /*if (self.game.physics.arcade.intersects(self.client.sprite.body, player.sprite.body)) {
+        // apply velocity to each other
+        var tmpx = player.sprite.body.velocity.x;
+        var tmpy = player.sprite.body.velocity.y;
+        player.sprite.body.velocity.x += self.client.sprite.body.velocity.x;
+        player.sprite.body.velocity.y += self.client.sprite.body.velocity.y;
+        self.client.sprite.body.velocity.x += tmpx;
+        self.client.sprite.body.velocity.y += tmpy;
+        console.log('skelly collision detected');
+      }*/
+    }
   });
 };
 
+Game.prototype._addPlayer = function(id, name, file, position, keystate) {
+  var self = this;
+  var sprite = self._createPlayerSprite(file, position);
+  self.game.physics.p2.enable(sprite);
+  self.players[id] = new Player(id, name, sprite, position, keystate);
+};
 
-Game.prototype._broadcastClientState = function(data) {
+Game.prototype._addClient = function(id, name, file, position, keystate) {
   var self = this;
 
-  if (self.client) {
-    self.ws.send(JSON.stringify({
-      'type': 'move',
-      'id': self.client.id,
-      'position': {x: self.client.sprite.x, y: self.client.sprite.y},
-      'keystate': self.client.keystate
-    }));
-  }
+  position = position || {x: 5*16, y: 5*16}; // FIXME
+  var sprite = self._createPlayerSprite(file, position);
+  self.game.physics.p2.enable(sprite);
+  self.client = new Player(id, name, sprite, position);
+
+  self.client.setCameraFollow(self.game);
+  self._broadcastClientState();
+};
+
+Game.prototype._createPlayerSprite = function(file, pos) {
+  var self = this;
+
+  pos = pos || {x: 5*16, y: 5*16}; // FIXME
+  var sprite = new Phaser.Sprite(self.game, pos.x, pos.y, 'dawnlike', file);
+  sprite.animations.add('skelly-idle', ['skelly-0.png', 'skelly-1.png']);
+  sprite.animations.play('skelly-idle', 2, true);
+  self.spriteGroup.add(sprite);
+
+  return sprite;
 };
 
 Game.prototype.applyMove = function(pid, position, keystate) {
@@ -210,7 +222,7 @@ Game.prototype._setupServerConnection = function(server) {
   self.ws = new WebSocket(server);
 
   self.ws.onmessage = function(event) {
-    console.log('received: ' + event.data);
+    //console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
