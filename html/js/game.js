@@ -38,7 +38,7 @@ function Game(options) {
 
   // preload function
   function preload() {
-    //self.game.stage.disableVisibilityChange = true;
+    self.game.stage.disableVisibilityChange = true;
     self.game.onPause.add(function() {
       self.hasClientFocus = false;
       if (self.client) {
@@ -201,6 +201,7 @@ Game.prototype._createPlayerSprite = function(file, pos) {
 
   pos = pos || {x: 5*16, y: 5*16}; // FIXME
   var sprite = new Phaser.Sprite(self.game, pos.x, pos.y, 'dawnlike', file);
+  sprite.smoothed = false;
   sprite.animations.add('skelly-idle', ['skelly-0.png', 'skelly-1.png']);
   sprite.animations.play('skelly-idle', 2, true);
   self.spriteGroup.add(sprite);
