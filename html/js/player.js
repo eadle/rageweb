@@ -10,10 +10,7 @@ function Player(id, name, sprite, position, keystate) {
 
   sprite.body.setZeroDamping();
   sprite.body.fixedRotation = true;
-  sprite.body.width = 8;
-  sprite.body.height = 2;
-  sprite.body.offset.x = 4;
-  sprite.body.offset.y = 14;
+  sprite.body.setRectangle(8, 2, 0, 7, 0);
   self.sprite = sprite;
 
   var position = position || {x: 0, y: 0};
