@@ -105,6 +105,15 @@ function Player(game, group, options) {
   self._setNextState();
 }
 
+Player.prototype.cameraFollow = function(game) {
+  var self = this;
+  game.camera.follow(self._sprite);
+  var width = 0.5*game.camera.width,
+      height = game.camera.height;
+  var pos = {x: (game.camera.width - width)/2, y: 0};
+  game.camera.deadzone = new Phaser.Rectangle(pos.x, pos.y, width, height);
+};
+
 Player.prototype.destroy = function() {
   var self = this;
   self._body.destroy();

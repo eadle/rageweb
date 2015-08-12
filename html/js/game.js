@@ -105,7 +105,14 @@ function Game(options) {
     },
     render: function() {
       if (Game.DEBUGGING) {
+        // show frames per second
         self._game.debug.text(self._game.time.fps || '--', 2, 14, "#00ff00");
+        if (self._client) {
+          // debugging camera deadzone
+          var zone = self._game.camera.deadzone;
+          self._game.context.fillStyle = 'rgba(255,0,0,0.6)';
+          self._game.context.fillRect(zone.x, zone.y, zone.width, zone.height);
+        } 
       }
     }
   });
@@ -199,6 +206,7 @@ Game.prototype._addClient = function(client) {
     debug: Game.DEBUGGING
   });
 
+  self._client.cameraFollow(self._game);
   self._chat.setName(client.name);
   self._broadcastClientState();
 };
