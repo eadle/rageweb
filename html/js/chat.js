@@ -25,7 +25,12 @@ Chat.prototype.setName = function(name) {
   var self = this;
   self._name = name;
   self._requestingHandle = false;
-  self._handle.innerHTML = self._name;
+  self.setHandleField(name);
+};
+
+Chat.prototype.setHandleField = function(message) {
+  var self = this;
+  self._handle.innerHTML = message;
 };
 
 Chat.prototype.appendUserMessage = function(name, message) {

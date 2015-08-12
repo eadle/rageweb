@@ -3,7 +3,7 @@
 Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.SERVER = 'ws://' + window.location.hostname + ':8188';
-Game.DEBUGGING = true;
+Game.DEBUGGING = false;
 
 function Game(options) {
   var self = this;
@@ -179,6 +179,11 @@ Game.prototype._setupServerConnection = function(server) {
             self._addPlayer(player);
           });
         }
+        break;
+      case 'error':
+        console.log(event.data);
+        self._chat.setHandleField(message.error);
+        self._chat.selectInput();
         break;
       default:
     }
