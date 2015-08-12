@@ -96,10 +96,12 @@ function Game(options) {
         self._updateClient(time);
       }
       // sort player sprites on y-axis
-      self._playerGroup.sort('y', Phaser.Group.SORT_ASCENDING);
+      self._playerGroup.sort('z', Phaser.Group.SORT_ASCENDING);
     },
     render: function() {
-
+      if (self._client) {
+        // self._game.debug.spriteInfo(self._client._sprite, 32, 32);
+      }
     }
   });
 

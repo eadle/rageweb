@@ -152,14 +152,18 @@ Player.prototype.setKeystate = function(keystate) {
 Player.prototype._lockSpritesToBody = function() {
   var self = this;
 
+
+  // lock shadow to body
+  self._shadow.x = self._body.x;
+  self._shadow.y = self._body.y + self._yOffset;
+  self._shadow.z = self._shadow.y;
+
+  // lock sprite to body
   self._sprite.x = self._body.x;
   if (self._state !== Player.FALLING) {
-    self._sprite.y = self._body.y + self._yOffset;
-  } else {
-    // lock shadow to body
-    self._shadow.x = self._body.x;
-    self._shadow.y = self._body.y + self._yOffset;
+    self._sprite.y = self._shadow.y;
   }
+  self._sprite.z = self._shadow.y;
 
   // while we're debugging
   if (self._debug) {
@@ -175,7 +179,6 @@ Player.prototype.update = function(time) {
   // clear velocity
   self._body.velocity.x = 0;
   self._body.velocity.y = 0;
-  self._lockSpritesToBody();
 
   switch (self._state) {
     case Player.WALKING:
@@ -198,6 +201,7 @@ Player.prototype.update = function(time) {
           v0y = -200,
           g = 500;
       self._sprite.y = self._yAtHit + v0y*t + 0.5*g*t*t;
+      self._sprite.z = self._shadow.y;
       // if falling animation has completed
       if (self._sprite.y > self._yAtHit) {
         // start recovering
@@ -227,6 +231,7 @@ Player.prototype.update = function(time) {
     default:
   };
 
+  self._lockSpritesToBody();
 };
 
 Player.prototype.punch = function() {
