@@ -33,10 +33,7 @@ function Game(options) {
       self._game.onPause.add(function() {
         self._chat.loseFocus();
         if (self._client) {
-          if (self._client._keystate !== 0) {
-            self._client.setKeystate(0);
-            self._broadcastClientState();
-          }
+          self._clearClientState();
         }   
       }, self);
       // on resume callback
@@ -50,6 +47,12 @@ function Game(options) {
       self._game.load.atlas('thug1', 'assets/images/thug1.png', 'assets/atlases/thug1.json');
       // load images that weren't loaded by atlases
       self._game.load.image('subway', 'assets/images/subway.png');
+
+      // canvas scaling
+      self._game.scale.maxWidth = 2*Game.WIDTH;
+      self._game.scale.maxHeight = 2*Game.HEIGHT;
+      self._game.scale.pageAlignHorizontally = true;
+      self._game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
 
     },
     create: function() {
@@ -70,7 +73,7 @@ function Game(options) {
       for (var ii = 0; ii < self._map.layers.length; ii++) {
         // console.log(self._map.layers[ii]);
         var layer = self._map.createLayer(self._map.layers[ii].name);
-        layer.smoothed = false;
+        //layer.smoothed = false;
         layer.resizeWorld();
         self._layers.push(layer);
       }
@@ -89,7 +92,7 @@ function Game(options) {
     update: function() {
       var time = new Date().getTime();
       self._updatePlayers(time);
-      if (self._client && !self._chat.isSelected()) {
+      if (self._client) {
         self._updateClient(time);
       }
       // sort player sprites on y-axis
@@ -207,6 +210,14 @@ Game.prototype._addPlayer = function(player) {
   self._chat.appendSessionMessage('['+player.name+' joined]');
 };
 
+Game.prototype._clearClientState = function() {
+  var self = this;
+  if (self._client._keystate !== 0) {
+    self._client.setKeystate(0);
+    self._broadcastClientState();
+  }
+};
+
 Game.prototype._broadcastClientState = function() {
   var self = this;
 
@@ -223,15 +234,16 @@ Game.prototype._broadcastClientState = function() {
 Game.prototype._updateClient = function(time) {
   var self = this;
 
-  var state = 0;
+  if (self._chat.isSelected()) {
+    self._client.update(time);
+    return;
+  }
 
+  var state = 0;
   if (self._game.input.keyboard.isDown(Phaser.Keyboard.T)) {
-    if (self._client._keystate !== 0) {
-      self._client.setKeystate(0);
-      self._broadcastClientState();
-    }
+    self._clearClientState();
     self._chat.selectInput();
-  } if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
+  } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
     self._client.punch();
   // 'o'uch button to be removed -- just for debugging
   } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.O)) {
@@ -248,7 +260,7 @@ Game.prototype._updateClient = function(time) {
     self._broadcastClientState();
   }
   self._client.update(time);
-  
+
 };
 
 Game.prototype._leftPressed = function() {
