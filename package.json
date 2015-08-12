@@ -1,5 +1,5 @@
 {
-  "name": "micro",
+  "name": "skellyweb",
   "version": "0.0.0",
   "description": "networked phaser.io",
   "main": "server.js",
@@ -10,5 +10,8 @@
   "license": "GPL 3.0",
   "dependencies": {
     "ws": "^0.7.2"
+  },
+  "repository": {
+    "git": "git://github.com/siphontv/skellyweb.git"
   }
 }

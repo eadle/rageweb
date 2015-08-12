@@ -1,83 +1,350 @@
 'use strict';
 
-function Player(id, name, sprite, position, keystate) {
+function Player(game, group, options) {
   var self = this;
+  options = options || {};
 
-  self.id = id || undefined;
-  self.name = name || undefined;
+  if (typeof game !== 'object') {
+    throw new Error('Player expects valid game context');
+    return null;
+  }
 
+  if (typeof group !== 'object') {
+    throw new Error('Player expects valid game group');
+    return null;
+  }
 
+  self._id = (typeof options.id === 'string') ? options.id : undefined;
+  self._name = (typeof options.name === 'string') ? options.name : undefined;
 
-  sprite.body.setZeroDamping();
-  sprite.body.fixedRotation = true;
-  sprite.body.setRectangle(8, 2, 0, 7, 0);
-  self.sprite = sprite;
+  self._state = Player.IDLING;
+  self._keystate = (typeof options.keystate === 'number') ? options.keystate : 0;
+  self.setKeystate(self._keystate);
 
-  var position = position || {x: 0, y: 0};
-  var velocity = velocity || {x: 0, y: 0};
-  self.setPosition(position);
+  var position = (typeof options.position === 'object') ? options.position : Player.START_POS;
 
-  self.keystate = keystate || 0;
+  self._debug = (typeof options.debug === 'boolean') ? options.debug : false;
 
-  console.log('created player: name='+name+', id='+id
-    +', position='+position + ', keystatey=' + self.keystate);
+  // damage variables
+  self._damage  = 0;
+  self._hitTime = 0;
+  self._yAtHit  = 0;
+  self._punchTime = 0;
+
+  // current animation
+  self._animation = null;
+
+  // FIXME Player should be base class
+  var idle = [
+    'thug1-idle-0.png',
+    'thug1-idle-1.png',
+    'thug1-idle-2.png',
+    'thug1-idle-1.png'
+  ];
+
+  var walk = [
+    'thug1-walk-0.png',
+    'thug1-walk-1.png',
+    'thug1-walk-2.png',
+    'thug1-walk-1.png'
+  ];
+
+  var punch = [
+    'thug1-punch.png'
+  ];
+
+  var headbutt = [
+    'thug1-headbutt-0.png',
+    'thug1-headbutt-1.png',
+    'thug1-headbutt-2.png'
+  ];
+
+  var hit = [
+    'thug1-hit-0.png'
+  ];
+
+  var falling = [
+    'thug1-hit-1.png'
+  ];
+
+  var recover = [
+    'thug1-recover-0.png',
+    'thug1-recover-1.png',
+    'thug1-recover-2.png'
+  ];
+
+  // player sprite and animations
+  self._sprite = new Phaser.Sprite(game, position.x, position.y, 'thug1', idle[0]);
+  self._sprite.animations.add('idle', idle);
+  self._sprite.animations.add('walk', walk);
+  self._sprite.animations.add('punch', punch);
+  self._sprite.animations.add('headbutt', headbutt);
+  self._sprite.animations.add('hit', hit);
+  self._sprite.animations.add('falling', falling);
+  self._sprite.animations.add('recover', recover);
+  self._sprite.anchor.setTo(0.5, 1.0);
+  self._sprite.smoothed = false;
+  group.add(self._sprite);
+
+  // shadow only used when falling
+  self._shadow = new Phaser.Sprite(game, position.x, position.y, 'thug1', 'thug1-shadow.png');
+  self._shadow.anchor.setTo(0.5, 1.0);
+  self._shadow.smoothed = false;
+  self._shadow.visible = false;
+  group.add(self._shadow);
+
+  // capsule can have same dimensions as shadow
+  var radius = self._shadow.height/1.5;
+  self._yOffset = radius/2;
+  self.body = new Phaser.Physics.P2.Body(game, null, position.x, position.y, 1);
+  self.body.addCircle(radius);
+  self.body.debug = self._debug;
+  // enable physics body
+  game.physics.p2.addBody(self.body);
+
+  self._setNextState();
 }
 
 Player.prototype.dispose = function() {
   var self = this;
-  self.sprite.kill();
-  // console.log(self.name + ' disconnected...');
+  // TODO remove sprites from group
+  // ...
+  // TODO cleanup physics body
+  // ...
+  // kill sprites
+  self._sprite.kill();
+  self._shadow.kill();
+};
+
+Player.prototype.getName = function() {
+  return this._name;
+};
+
+Player.prototype._lockSpritesToBody = function() {
+  var self = this;
+
+  self._sprite.x = self.body.x;
+  if (self._state !== Player.FALLING) {
+    self._sprite.y = self.body.y + self._yOffset;
+  } else {
+    // lock shadow to body
+    self._shadow.x = self.body.x;
+    self._shadow.y = self.body.y + self._yOffset;
+  }
+
+  // while we're debugging
+  if (self._debug) {
+    self.body.debugBody.x = self.body.x;
+    self.body.debugBody.y = self.body.y;
+    self.body.debugBody.rotation = self.body.rotation;
+  }
+};
+
+Player.prototype.update = function(time) {
+  var self = this;
+
+  // clear velocity
+  self.body.velocity.x = 0;
+  self.body.velocity.y = 0;
+  self._lockSpritesToBody();
+
+  switch (self._state) {
+    case Player.WALKING:
+      var hSpeed = Player.MAX_SPEED,
+          vSpeed = Player.MAX_SPEED/2;
+      if (self._keystate & Player.LEFT_PRESSED)  self.body.moveLeft(hSpeed);
+      if (self._keystate & Player.RIGHT_PRESSED) self.body.moveRight(hSpeed);
+      if (self._keystate & Player.UP_PRESSED)    self.body.moveUp(vSpeed);
+      if (self._keystate & Player.DOWN_PRESSED)  self.body.moveDown(vSpeed);
+      break;
+    case Player.HIT:
+      var dt = time - self._hitTime;
+      // console.log('time=' + time + ', hittime= ' + self._hitTime + ', dt=' + dt);
+      if (dt >= Player.HIT_TIME) {
+        self._setNextState();
+      }
+      break;
+    case Player.FALLING:
+      var t = (time - self._hitTime)/1000,
+          v0y = -200,
+          g = 500;
+      self._sprite.y = self._yAtHit + v0y*t + 0.5*g*t*t;
+      // if falling animation has completed
+      if (self._sprite.y > self._yAtHit) {
+        // start recovering
+        self._sprite.y = self._yAtHit;
+        self._damage = 0;
+        self._setRecover();
+        self._shadow.visible = false;
+      }
+      break;
+    case Player.RECOVERING:
+      if (!self._animation.isPlaying) {
+        self._setNextState();
+      }
+      break;
+    case Player.PUNCHING:
+      var dt = time  - self._punchTime;
+      if (dt >= Player.PUNCH_TIME) {
+        self._setNextState();
+      }
+      break;
+    case Player.HEADBUTTING:
+      console.log('WARN: headbutting not implemented');
+      break;
+    case Player.JUMPING:
+      console.log('WARN: jumping not implemented');
+      break;
+    default:
+  };
+
+};
+
+Player.prototype.punch = function() {
+  var self = this;
+  if (self._state & Player.CAN_PUNCH) {
+    self._punchTime = new Date().getTime();
+    self._setPunch();
+  }
+};
+
+Player.prototype.hit = function(damage) {
+  var self = this;
+  if (self._state & Player.CAN_HIT) {
+    self._hitTime = new Date().getTime();
+    self._damage += damage;
+    self._setHit();
+  }
 };
 
 Player.prototype.setPosition = function(position) {
   var self = this;
-  self.sprite.body.x = position.x;
-  self.sprite.body.y = position.y;
-  // console.log('set ' + self.name + ' position');
+  self.body.x = position.x;
+  self.body.y = position.y;
+  self._lockSpritesToBody();
 };
 
 Player.prototype.setKeystate = function(keystate) {
   var self = this;
-  self.keystate = keystate; // FIXME initially receiving undefined
-  // console.log('set keystate for ' + self.name + ': ' + self.keystate);
-};
 
-
-Player.prototype.update = function() {
-  var self = this;
-
-  var speed = 150,
-      vx = 0,
-      vy = 0;
-
-  if (self.keystate & Player.LEFT_MASK)  vx -= speed;
-  if (self.keystate & Player.RIGHT_MASK) vx += speed;
-  if (self.keystate & Player.UP_MASK)    vy -= speed;
-  if (self.keystate & Player.DOWN_MASK)  vy += speed;
-
-  self.sprite.body.velocity.x = vx; 
-  self.sprite.body.velocity.y = vy; 
-
-};
-
-Player.prototype.setCameraFollow = function(game) {
-  var self = this;
-
-  game.camera.follow(self.sprite);
-
-  var p = 0.2;
-  var width = p*game.world.width,
-      height = p*game.world.height;
-  var pos = {
-    x: game.world.centerX/2 - width/2 - self.sprite.width/2,
-    y: game.world.centerY/2 - height/2 - self.sprite.height/2
+  if (keystate !== self._keystate) {
+    //console.log('setting keystate: keystate=' + keystate);
+    self._keystate = keystate;
+    // TODO attacking
+    // ...
+    // TODO jumping
+    // ...
+    // FIXME can't be walking if attacking or jumping
+    if (self._state & Player.CAN_MOVE) {
+      self._setNextState();
+    }
   };
 
-  game.camera.deadzone = new Phaser.Rectangle(pos.x, pos.y, width, height);
 };
 
-Player.LEFT_MASK  = 1;
-Player.RIGHT_MASK = 1 << 1;
-Player.UP_MASK    = 1 << 2;
-Player.DOWN_MASK  = 1 << 3;
-Player.JUMP_MASK  = 1 << 4;
+Player.prototype._faceLeft = function() {
+  this._sprite.scale.x = -1.0;
+};
+
+Player.prototype._faceRight = function() {
+  this._sprite.scale.x = 1.0;
+};
+
+Player.prototype._setNextState = function() {
+  var self = this;
+  if (self._movingHorizontally() || self._movingVertically()) {
+    self._setWalk();
+  } else {
+    self._setIdle();
+  }
+};
+
+Player.prototype._setWalk = function() {
+  var self = this;
+  self._state = Player.WALKING;
+  // face sprite in moving direction
+  if (self._keystate & Player.LEFT_PRESSED) {
+    self._faceLeft();
+  } else if (self._keystate & Player.RIGHT_PRESSED) {
+    self._faceRight();
+  }
+  self._setAnimation('walk', 10);
+};
+
+Player.prototype._setIdle = function() {
+  var self = this;
+  self._state = Player.IDLING;
+  self._setAnimation('idle', 6);
+};
+
+Player.prototype._setPunch = function() {
+  var self = this;
+  self._state = Player.PUNCHING;
+  self._setAnimation('punch', 1, false);
+};
+
+Player.prototype._setHit = function() {
+  var self = this;
+
+  if (self._damage < Player.MAX_DAMAGE) {
+    self._state = Player.HIT;
+    self._sprite.animations.play('hit', 1, false);
+  } else {
+    self._yAtHit = self._sprite.y;
+    self._state = Player.FALLING;
+    self._sprite.animations.play('falling', 1, false);
+    self._shadow.visible = true;
+  }
+};
+
+Player.prototype._setRecover = function() {
+  var self = this;
+  self._state = Player.RECOVERING;
+  self._setAnimation('recover', 4, false);
+};
+
+Player.prototype._setAnimation = function(animation, fps, loop) {
+  var self = this;
+  loop = (typeof loop === 'boolean') ? loop : true;
+  fps = (typeof fps === 'number') ? fps : 12;
+  self._animation = self._sprite.animations.play(animation, fps, loop);
+};
+
+Player.prototype._movingHorizontally = function() {
+  var self = this;
+  var left = self._keystate & Player.LEFT_PRESSED,
+      right = self._keystate & Player.RIGHT_PRESSED;
+  return (left && !right) || (!left && right);
+};
+
+Player.prototype._movingVertically = function() {
+  var self = this;
+  var up = self._keystate & Player.UP_PRESSED,
+      down = self._keystate & Player.DOWN_PRESSED;
+  return (up && !down) || (!up && down);
+};
+
+// player key states
+Player.LEFT_PRESSED  = 1;
+Player.RIGHT_PRESSED = 1 << 1;
+Player.UP_PRESSED    = 1 << 2;
+Player.DOWN_PRESSED  = 1 << 3;
+// player game states
+Player.IDLING        = 1 << 4;
+Player.WALKING       = 1 << 5;
+Player.JUMPING       = 1 << 6
+Player.PUNCHIING     = 1 << 7;
+Player.HEADBUTTING   = 1 << 8;
+Player.HIT           = 1 << 9;
+Player.FALLING       = 1 << 10
+Player.RECOVERING    = 1 << 11;
+// other shared attributes
+Player.MAX_SPEED = 150;
+Player.MAX_DAMAGE = 20;
+Player.HIT_TIME = 200;   // ms
+Player.PUNCH_TIME = 200; // ms
+Player.CAN_MOVE = Player.IDLING | Player.WALKING;
+Player.CAN_HIT = ~(Player.HIT | Player.FALLING | Player.RECOVERING);
+Player.CAN_PUNCH = Player.CAN_HIT;
+// temporary
+Player.START_POS = {x: 256, y: 220};
