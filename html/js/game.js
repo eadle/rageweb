@@ -24,6 +24,11 @@ function Game(options) {
   self._game = new Phaser.Game(Game.WIDTH, Game.HEIGHT, Phaser.CANVAS, 'phaser-example', {
     preload: function() {
 
+      if (Game.DEBUGGING) {
+        // enable fps debugging
+        self._game.time.advancedTiming = true;
+      }
+
       // set background color
       self._game.stage.backgroundColor = '#222244';
 
@@ -99,8 +104,8 @@ function Game(options) {
       self._playerGroup.sort('z', Phaser.Group.SORT_ASCENDING);
     },
     render: function() {
-      if (self._client) {
-        // self._game.debug.spriteInfo(self._client._sprite, 32, 32);
+      if (Game.DEBUGGING) {
+        self._game.debug.text(self._game.time.fps || '--', 2, 14, "#00ff00");
       }
     }
   });

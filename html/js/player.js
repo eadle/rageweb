@@ -152,7 +152,6 @@ Player.prototype.setKeystate = function(keystate) {
 Player.prototype._lockSpritesToBody = function() {
   var self = this;
 
-
   // lock shadow to body
   self._shadow.x = self._body.x;
   self._shadow.y = self._body.y + self._yOffset;
@@ -165,12 +164,24 @@ Player.prototype._lockSpritesToBody = function() {
   }
   self._sprite.z = self._shadow.y;
 
-  // while we're debugging
+  // if debugging physics body
   if (self._debug) {
     self._body.debugBody.x = self._body.x;
     self._body.debugBody.y = self._body.y;
     self._body.debugBody.rotation = self._body.rotation;
   }
+};
+
+Player.prototype._forceProperSpriteRendering = function() {
+  var self = this;
+  var shadowXOffset = (self._shadow.width%2)  ? 0 : -0.5,
+      spriteXOffset = (self._sprite.width%2)  ? 0 : -0.5,
+      shadowYOffset = (self._shadow.height%2) ? 0 : -0.5,
+      spriteYOffset = (self._sprite.height%2) ? 0 : -0.5;
+  self._shadow.x = Math.round(self._shadow.x) + shadowXOffset;
+  self._shadow.y = Math.round(self._shadow.y) + shadowYOffset;
+  self._sprite.x = Math.round(self._sprite.x) + spriteXOffset;
+  self._sprite.y = Math.round(self._sprite.y) + spriteYOffset;
 };
 
 Player.prototype.update = function(time) {
@@ -232,6 +243,7 @@ Player.prototype.update = function(time) {
   };
 
   self._lockSpritesToBody();
+  self._forceProperSpriteRendering();
 };
 
 Player.prototype.punch = function() {
