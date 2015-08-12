@@ -3,7 +3,7 @@
 Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.SERVER = 'ws://' + window.location.hostname + ':8188';
-Game.DEBUGGING = false;
+Game.DEBUGGING = true;
 
 function Game(options) {
   var self = this;
@@ -151,7 +151,7 @@ Game.prototype._setupServerConnection = function(server) {
         var player = self._players[message.id];
         if (player) {
           self._chat.appendSessionMessage('['+player.getName()+' left]');
-          player.dispose();
+          player.destroy();
           delete self._players[message.id];
         }
         break;
@@ -225,8 +225,8 @@ Game.prototype._broadcastClientState = function() {
     self.send({
       'type': 'move',
       'id': self._client.id,
-      'position': {x: self._client.body.x, y: self._client.body.y},
-      'keystate': self._client._keystate
+      'position': self._client.getPosition(),
+      'keystate': self._client.getKeystate()
     });
   }
 };

@@ -96,47 +96,76 @@ function Player(game, group, options) {
   // capsule can have same dimensions as shadow
   var radius = self._shadow.height/1.5;
   self._yOffset = radius/2;
-  self.body = new Phaser.Physics.P2.Body(game, null, position.x, position.y, 1);
-  self.body.addCircle(radius);
-  self.body.debug = self._debug;
+  self._body = new Phaser.Physics.P2.Body(game, null, position.x, position.y, 1);
+  self._body.addCircle(radius);
+  self._body.debug = self._debug;
   // enable physics body
-  game.physics.p2.addBody(self.body);
+  game.physics.p2.addBody(self._body);
 
   self._setNextState();
 }
 
-Player.prototype.dispose = function() {
+Player.prototype.destroy = function() {
   var self = this;
-  // TODO remove sprites from group
-  // ...
-  // TODO cleanup physics body
-  // ...
-  // kill sprites
-  self._sprite.kill();
-  self._shadow.kill();
+  self._body.destroy();
+  self._shadow.destroy();
+  self._sprite.destroy();
 };
 
 Player.prototype.getName = function() {
   return this._name;
 };
 
+Player.prototype.getPosition = function() {
+  return {x: this._body.x, y: this._body.y};
+};
+
+Player.prototype.getKeystate = function() {
+  return this._keystate;
+};
+
+Player.prototype.setPosition = function(position) {
+  var self = this;
+  self._body.x = position.x;
+  self._body.y = position.y;
+  self._lockSpritesToBody();
+};
+
+Player.prototype.setKeystate = function(keystate) {
+  var self = this;
+
+  if (keystate !== self._keystate) {
+    //console.log('setting keystate: keystate=' + keystate);
+    self._keystate = keystate;
+    // TODO attacking
+    // ...
+    // TODO jumping
+    // ...
+    // FIXME can't be walking if attacking or jumping
+    if (self._state & Player.CAN_MOVE) {
+      self._setNextState();
+    }
+  };
+
+};
+
 Player.prototype._lockSpritesToBody = function() {
   var self = this;
 
-  self._sprite.x = self.body.x;
+  self._sprite.x = self._body.x;
   if (self._state !== Player.FALLING) {
-    self._sprite.y = self.body.y + self._yOffset;
+    self._sprite.y = self._body.y + self._yOffset;
   } else {
     // lock shadow to body
-    self._shadow.x = self.body.x;
-    self._shadow.y = self.body.y + self._yOffset;
+    self._shadow.x = self._body.x;
+    self._shadow.y = self._body.y + self._yOffset;
   }
 
   // while we're debugging
   if (self._debug) {
-    self.body.debugBody.x = self.body.x;
-    self.body.debugBody.y = self.body.y;
-    self.body.debugBody.rotation = self.body.rotation;
+    self._body.debugBody.x = self._body.x;
+    self._body.debugBody.y = self._body.y;
+    self._body.debugBody.rotation = self._body.rotation;
   }
 };
 
@@ -144,18 +173,18 @@ Player.prototype.update = function(time) {
   var self = this;
 
   // clear velocity
-  self.body.velocity.x = 0;
-  self.body.velocity.y = 0;
+  self._body.velocity.x = 0;
+  self._body.velocity.y = 0;
   self._lockSpritesToBody();
 
   switch (self._state) {
     case Player.WALKING:
       var hSpeed = Player.MAX_SPEED,
           vSpeed = Player.MAX_SPEED/2;
-      if (self._keystate & Player.LEFT_PRESSED)  self.body.moveLeft(hSpeed);
-      if (self._keystate & Player.RIGHT_PRESSED) self.body.moveRight(hSpeed);
-      if (self._keystate & Player.UP_PRESSED)    self.body.moveUp(vSpeed);
-      if (self._keystate & Player.DOWN_PRESSED)  self.body.moveDown(vSpeed);
+      if (self._keystate & Player.LEFT_PRESSED)  self._body.moveLeft(hSpeed);
+      if (self._keystate & Player.RIGHT_PRESSED) self._body.moveRight(hSpeed);
+      if (self._keystate & Player.UP_PRESSED)    self._body.moveUp(vSpeed);
+      if (self._keystate & Player.DOWN_PRESSED)  self._body.moveDown(vSpeed);
       break;
     case Player.HIT:
       var dt = time - self._hitTime;
@@ -215,31 +244,6 @@ Player.prototype.hit = function(damage) {
     self._damage += damage;
     self._setHit();
   }
-};
-
-Player.prototype.setPosition = function(position) {
-  var self = this;
-  self.body.x = position.x;
-  self.body.y = position.y;
-  self._lockSpritesToBody();
-};
-
-Player.prototype.setKeystate = function(keystate) {
-  var self = this;
-
-  if (keystate !== self._keystate) {
-    //console.log('setting keystate: keystate=' + keystate);
-    self._keystate = keystate;
-    // TODO attacking
-    // ...
-    // TODO jumping
-    // ...
-    // FIXME can't be walking if attacking or jumping
-    if (self._state & Player.CAN_MOVE) {
-      self._setNextState();
-    }
-  };
-
 };
 
 Player.prototype._faceLeft = function() {
