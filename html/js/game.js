@@ -47,11 +47,11 @@ function Game(options) {
       }, self);
 
       // load maps
-      self._game.load.tilemap('subway-map', 'assets/maps/subway-map.json',null, Phaser.Tilemap.TILED_JSON);
+      self._game.load.tilemap('subway-map', 'assets/maps/subway32.json',null, Phaser.Tilemap.TILED_JSON);
       // load atlases
       self._game.load.atlas('thug1', 'assets/images/thug1.png', 'assets/atlases/thug1.json');
       // load images that weren't loaded by atlases
-      self._game.load.image('subway', 'assets/images/subway.png');
+      self._game.load.image('subway', 'assets/images/subway32.png');
 
       // canvas scaling
       self._game.scale.maxWidth = 2*Game.WIDTH;
