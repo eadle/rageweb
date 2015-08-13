@@ -31,7 +31,7 @@ Player.STATE_MASK  =
   | Player.RECOVER;
 Player.FACING_LEFT = 1 << 12;
 // other shared attributes
-Player.MAX_SPEED  = 150;
+Player.MAX_SPEED  = 180;
 Player.MAX_DAMAGE = 20;
 Player.HIT_TIME   = 200; // ms
 Player.PUNCH_TIME = 200; // ms
@@ -305,12 +305,12 @@ Player.prototype.update = function(time) {
 
   switch (self._state) {
     case Player.WALK:
-      var hSpeed = Player.MAX_SPEED,
-          vSpeed = Player.MAX_SPEED/2;
-      if (self._keystate & Player.LEFT_PRESSED)  self._body.moveLeft(hSpeed);
-      if (self._keystate & Player.RIGHT_PRESSED) self._body.moveRight(hSpeed);
-      if (self._keystate & Player.UP_PRESSED)    self._body.moveUp(vSpeed);
-      if (self._keystate & Player.DOWN_PRESSED)  self._body.moveDown(vSpeed);
+      var dx = Player.MAX_SPEED,
+          dy = Player.MAX_SPEED/2;
+      if (self._keystate & Player.LEFT_PRESSED)  self._body.moveLeft(dx);
+      if (self._keystate & Player.RIGHT_PRESSED) self._body.moveRight(dx);
+      if (self._keystate & Player.UP_PRESSED)    self._body.moveUp(dy);
+      if (self._keystate & Player.DOWN_PRESSED)  self._body.moveDown(dy);
       break;
     case Player.HIT:
       var dt = time - self._hitTime;
@@ -356,6 +356,7 @@ Player.prototype.update = function(time) {
 
   self._lockSpritesToBody();
   self._forceProperSpriteRendering();
+
 };
 
 Player.prototype._faceLeft = function() {
