@@ -270,16 +270,18 @@ Game.prototype._updateClient = function(time) {
     } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.O)) {
       self._client.hit(5);
     } else {
-      if (self._leftPressed())  keystate |= Player.LEFT_PRESSED;
-      if (self._rightPressed()) keystate |= Player.RIGHT_PRESSED;
-      if (self._upPressed())    keystate |= Player.UP_PRESSED;
-      if (self._downPressed())  keystate |= Player.DOWN_PRESSED;
+      if (self._client.canMove()) {
+        if (self._leftPressed())  keystate |= Player.LEFT_PRESSED;
+        if (self._rightPressed()) keystate |= Player.RIGHT_PRESSED;
+        if (self._upPressed())    keystate |= Player.UP_PRESSED;
+        if (self._downPressed())  keystate |= Player.DOWN_PRESSED;
+        self._client.setKeystate(keystate);
+      }
     }
-    self._client.setKeystate(keystate);
   }
 
   self._client.update(time);
-  if (self._client.changedState()) {
+  if (self._client.changed()) {
     self._broadcastClientState();
   }
 

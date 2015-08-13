@@ -241,6 +241,10 @@ Player.prototype.debugState = function(state) {
 
 };
 
+Player.prototype.canMove = function() {
+  return this._state & Player.CAN_MOVE;
+};
+
 Player.prototype.getState = function() {
   var self = this;
   return self._state | self._keystate | self._direction;
