@@ -79,7 +79,8 @@ function Game(options) {
       for (var ii = 0; ii < self._map.layers.length; ii++) {
         // console.log(self._map.layers[ii]);
         var layer = self._map.createLayer(self._map.layers[ii].name);
-        //layer.smoothed = false;
+        // layer.fixedToCamera = false;
+        layer.smoothed = false;
         layer.resizeWorld();
         self._layers.push(layer);
       }
