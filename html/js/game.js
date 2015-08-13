@@ -23,29 +23,23 @@ function Game(options) {
 
   self._game = new Phaser.Game(Game.WIDTH, Game.HEIGHT, Phaser.CANVAS, 'phaser-example', {
     preload: function() {
-
       if (Game.DEBUGGING) {
         // enable fps debugging
         self._game.time.advancedTiming = true;
       }
-
       // set background color
       self._game.stage.backgroundColor = '#222244';
-
-      // whether or not to pause on lost focus
-      self._game.stage.disableVisibilityChange = Game.DEBUGGING;
-      // on pause callback
-      self._game.onPause.add(function() {
+      // use notifications on blur
+      self._game.stage.disableVisibilityChange = false;
+      self._game.onFocus.dispatch = function() {
+        self._chat.gainFocus();
+      };
+      self._game.onBlur.dispatch = function() {
         self._chat.loseFocus();
         if (self._client) {
           self._clearClientKeystate();
         }   
-      }, self);
-      // on resume callback
-      self._game.onResume.add(function() {
-        self._chat.gainFocus();
-      }, self);
-
+      };
       // load maps
       self._game.load.tilemap('subway-map', 'assets/maps/subway32.json',null, Phaser.Tilemap.TILED_JSON);
       // load atlases
