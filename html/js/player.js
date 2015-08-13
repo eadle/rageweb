@@ -32,7 +32,7 @@ Player.STATE_MASK  =
 Player.FACING_LEFT = 1 << 12;
 // other shared attributes
 Player.MAX_SPEED  = 180;
-Player.MAX_DAMAGE = 20;
+Player.MAX_DAMAGE = 15;
 Player.HIT_TIME   = 200; // ms
 Player.PUNCH_TIME = 200; // ms
 Player.CAN_MOVE   = Player.IDLE | Player.WALK;
@@ -138,8 +138,9 @@ function Player(game, group, options) {
   if (typeof options.state === 'number') {
     self.setState(options.state);
   }
-  self._laststate = self._state | self._keystate | self._direction;
-  console.log('self._laststate: ' + self._laststate);
+  self._lastDirection = self._direction;
+  self._lastKeystate = self._keystate;
+  self._lastState = self._state;
 }
 
 Player.prototype.cameraFollow = function(game) {
@@ -177,14 +178,36 @@ Player.prototype.setPosition = function(position) {
   self._lockSpritesToBody();
 };
 
-Player.prototype.changedState = function() {
+Player.prototype.changedDirection = function() {
   var self = this;
-  var state = self._state | self._keystate | self._direction;
-  if (self._laststate !== state) {
-    self._laststate = state;
+  if (self._lastDirection !== self._direction) {
+    self._lastDirection = self._direction;
     return true;
   }
   return false;
+};
+
+Player.prototype.changedKeystate = function() {
+  var self = this;
+  if (self._lastKeystate !== self._keystate) {
+    self._lastKeystate = self._keystate;
+    return true;
+  }
+  return false;
+};
+
+Player.prototype.changedState = function() {
+  var self = this;
+  if (self._lastState !== self._state) {
+    self._lastState = self._state;
+    return true;
+  }
+  return false;
+};
+
+Player.prototype.changed = function() {
+  var self = this;
+  return self.changedState() || self.changedKeystate() || self.changedDirection();
 };
 
 Player.prototype.debugState = function(state) {
@@ -225,6 +248,9 @@ Player.prototype.getState = function() {
 
 Player.prototype.setState = function(state) {
   var self = this;
+
+  self.debugState(state);
+
   // set direction
   if (state & Player.FACING_LEFT) {
     self._faceLeft();
@@ -233,16 +259,11 @@ Player.prototype.setState = function(state) {
   }
   // set player state
   switch (state & Player.STATE_MASK) {
-    case Player.IDLE:    self._setIdle();    break;
-    case Player.WALK:    self._setWalk();    break;
-    case Player.PUNCH:   self.punch();       break; 
-    case Player.HIT:     self.hit(5);        break;
-    case Player.FALL:
-      // FIXME FIXME FIXME FIXME FIXME FIXME FIXME
-      self._damage += 5; // FIXME FIXME FIXME FIXME
-      // FIXME FIXME FIXME FIXME FIXME FIXME FIXME
-      self._setFall();
-      break;
+    case Player.IDLE:    self._setIdle(); break;
+    case Player.WALK:    self._setWalk(); break;
+    case Player.PUNCH:   self.punch();    break; 
+    case Player.HIT:     self._setHit();  break;
+    case Player.FALL:    self._setFall(); break;
     case Player.RECOVER: /* should happen on it's own */ break;
     default: console.log('unknown state: ' + (state & Player.STATE_MASK)); break;
   }
@@ -329,9 +350,8 @@ Player.prototype.update = function(time) {
       if (self._sprite.y > self._yAtHit) {
         // start recovering
         self._sprite.y = self._yAtHit;
-        self._damage = 0;
-        self._setRecover();
         self._shadow.visible = false;
+        self._setRecover();
       }
       break;
     case Player.RECOVER:
@@ -416,18 +436,17 @@ Player.prototype._setPunch = function() {
 Player.prototype.hit = function(damage) {
   var self = this;
   if (self._state & Player.CAN_HIT) {
-    self._damage += damage;
     if (self._damage < Player.MAX_DAMAGE) {
       self._setHit();
     } else {
       self._setFall();
     }
-
   }
 };
 
 Player.prototype._setHit = function() {
   var self = this;
+  self._damage += 5; // FIXME
   self._hitTime = new Date().getTime();
   self._state = Player.HIT;
   self._sprite.animations.play('hit', 1, false);
@@ -435,6 +454,7 @@ Player.prototype._setHit = function() {
 
 Player.prototype._setFall = function() {
   var self = this;
+  self._damage = 0;
   self._hitTime = new Date().getTime();
   self._yAtHit = self._sprite.y;
   self._state = Player.FALL;
