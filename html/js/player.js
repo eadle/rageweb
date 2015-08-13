@@ -253,7 +253,7 @@ Player.prototype.getState = function() {
 Player.prototype.setState = function(state) {
   var self = this;
 
-  self.debugState(state);
+  // self.debugState(state);
 
   // set direction
   if (state & Player.FACING_LEFT) {
@@ -268,7 +268,7 @@ Player.prototype.setState = function(state) {
     case Player.PUNCH:   self.punch();    break; 
     case Player.HIT:     self._setHit();  break;
     case Player.FALL:    self._setFall(); break;
-    case Player.RECOVER: /* should happen on it's own */ break;
+    case Player.RECOVER: self._setRecover(); break;
     default: console.log('unknown state: ' + (state & Player.STATE_MASK)); break;
   }
   // set keystate
