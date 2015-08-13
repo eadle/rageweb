@@ -15,26 +15,14 @@ Player.HIT      = 1 << 9;
 Player.FALL     = 1 << 10
 Player.RECOVER  = 1 << 11;
 // bit masks
-Player.KEYSTATE_MASK = 
-    Player.LEFT_PRESSED
-  | Player.RIGHT_PRESSED
-  | Player.UP_PRESSED
-  | Player.DOWN_PRESSED;
-Player.STATE_MASK  = 
-    Player.IDLE
-  | Player.WALK
-  | Player.JUMP
-  | Player.PUNCH
-  | Player.HEADBUTT
-  | Player.HIT
-  | Player.FALL
-  | Player.RECOVER;
+Player.KEYSTATE_MASK = 0x0F;
+Player.STATE_MASK = 0xFF0;
 Player.FACING_LEFT = 1 << 12;
 // other shared attributes
 Player.MAX_SPEED  = 180;
 Player.MAX_DAMAGE = 15;
 Player.HIT_TIME   = 200; // ms
-Player.PUNCH_TIME = 200; // ms
+Player.PUNCH_TIME = 50; // ms
 Player.CAN_MOVE   = Player.IDLE | Player.WALK;
 Player.CAN_HIT    = ~(Player.HIT | Player.FALL | Player.RECOVER);
 Player.CAN_PUNCH  = Player.CAN_HIT;
