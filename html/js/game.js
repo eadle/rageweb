@@ -38,7 +38,7 @@ function Game(options) {
       self._game.onPause.add(function() {
         self._chat.loseFocus();
         if (self._client) {
-          self._clearClientState();
+          self._clearClientKeystate();
         }   
       }, self);
       // on resume callback
@@ -147,11 +147,11 @@ Game.prototype._setupServerConnection = function(server) {
       case 'player':
         self._addPlayer(message);
         break;
-      case 'move':
+      case 'state':
         var pid = message.id,
             position = message.position,
-            keystate = message.keystate;
-        self._applyMove(pid, position, keystate);
+            state = message.state;
+        self._applyStateChange(pid, position, state);
         break;
       case 'chat':
         var pid = message.id;
@@ -207,7 +207,7 @@ Game.prototype._addClient = function(client) {
     id: client.id,
     name: client.name,
     position: Player.START_POS,
-    keystate: 0,
+    state: Player.IDLE,
     debug: Game.DEBUGGING
   });
 
@@ -223,16 +223,16 @@ Game.prototype._addPlayer = function(player) {
     id: player.id,
     name: player.name,
     position: player.position,
-    keystate: player.keystate,
+    state: player.state,
     debug: Game.DEBUGGING
   });
 
   self._chat.appendSessionMessage('['+player.name+' joined]');
 };
 
-Game.prototype._clearClientState = function() {
+Game.prototype._clearClientKeystate = function() {
   var self = this;
-  if (self._client._keystate !== 0) {
+  if (0 !== self._client.getKeystate()) {
     self._client.setKeystate(0);
     self._broadcastClientState();
   }
@@ -241,12 +241,16 @@ Game.prototype._clearClientState = function() {
 Game.prototype._broadcastClientState = function() {
   var self = this;
 
+  // var state = self._client.getState();
+  // console.log('state: ' + state);
+  // self._client.debugState(state);
+
   if (self._client) {
     self.send({
-      'type': 'move',
+      'type': 'state',
       'id': self._client.id,
       'position': self._client.getPosition(),
-      'keystate': self._client.getKeystate()
+      'state': self._client.getState()
     });
   }
 };
@@ -254,32 +258,28 @@ Game.prototype._broadcastClientState = function() {
 Game.prototype._updateClient = function(time) {
   var self = this;
 
-  if (self._chat.isSelected()) {
-    self._client.update(time);
-    return;
+  if (!self._chat.isSelected()) {
+    var keystate = 0;
+    if (self._game.input.keyboard.isDown(Phaser.Keyboard.T)) {
+      self._clearClientKeystate();
+      self._chat.selectInput();
+    } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
+      self._client.punch();
+    } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.O)) {
+      self._client.hit(5);
+    } else {
+      if (self._leftPressed())  keystate |= Player.LEFT_PRESSED;
+      if (self._rightPressed()) keystate |= Player.RIGHT_PRESSED;
+      if (self._upPressed())    keystate |= Player.UP_PRESSED;
+      if (self._downPressed())  keystate |= Player.DOWN_PRESSED;
+    }
+    self._client.setKeystate(keystate);
   }
 
-  var state = 0;
-  if (self._game.input.keyboard.isDown(Phaser.Keyboard.T)) {
-    self._clearClientState();
-    self._chat.selectInput();
-  } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
-    self._client.punch();
-  // 'o'uch button to be removed -- just for debugging
-  } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.O)) {
-    self._client.hit(5);
-  } else {
-    if (self._leftPressed())  state |= Player.LEFT_PRESSED;
-    if (self._rightPressed()) state |= Player.RIGHT_PRESSED;
-    if (self._upPressed())    state |= Player.UP_PRESSED;
-    if (self._downPressed())  state |= Player.DOWN_PRESSED;
-  }
-
-  if (state !== self._client._keystate) {
-    self._client.setKeystate(state);
+  self._client.update(time);
+  if (self._client.changedState()) {
     self._broadcastClientState();
   }
-  self._client.update(time);
 
 };
 
@@ -307,12 +307,12 @@ Game.prototype._downPressed = function() {
     || self._game.input.keyboard.isDown(Phaser.Keyboard.J);
 }
 
-Game.prototype._applyMove = function(pid, position, keystate) {
+Game.prototype._applyStateChange = function(pid, position, state) {
   var self = this;
   
   if (pid in self._players) {
     self._players[pid].setPosition(position);
-    self._players[pid].setKeystate(keystate);
+    self._players[pid].setState(state);
   }
 };
 
