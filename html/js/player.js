@@ -354,7 +354,7 @@ Player.prototype.update = function(time) {
       if (self._sprite.y > self._yAtHit) {
         // start recovering
         self._sprite.y = self._yAtHit;
-        self._shadow.visible = false;
+
         self._setRecover();
       }
       break;
@@ -469,6 +469,7 @@ Player.prototype._setFall = function() {
 Player.prototype._setRecover = function() {
   var self = this;
   self._state = Player.RECOVER;
+  self._shadow.visible = false;
   self._setAnimation('recover', 4, false);
 };
 
