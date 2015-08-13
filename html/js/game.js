@@ -67,8 +67,8 @@ function Game(options) {
       // initialize chat
       self._chat = new Chat();
       // start physics system
-      self._game.physics.startSystem(Phaser.Physics.P2JS);
-      self._game.physics.useElapsedTime = true;
+      self._game.physics.startSystem(Phaser.Physics.P2JS, {useElapsedTime: true});
+      self._game.physics.p2.useElapsedTime = true;
       // prepare user input
       self._cursors = self._game.input.keyboard.createCursorKeys();
 
