@@ -46,6 +46,8 @@ Chat.prototype.setName = function(name) {
   self._name = name;
   self._requestingHandle = false;
   self.setHandleField(name);
+  // allow for chat input
+  self._input.maxLength = Chat.CHAR_LIMIT;
 };
 
 Chat.prototype.setHandleField = function(message) {
