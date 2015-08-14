@@ -107,8 +107,8 @@ function Player(game, group, options) {
   // shadow only used when falling
   self._shadow = new Phaser.Sprite(game, position.x, position.y, 'thug1', 'thug1-shadow.png');
   self._shadow.anchor.setTo(0.5, 1.0);
-  self._shadow.smoothed = false;
   self._shadow.visible = false;
+  self._shadow.smoothed = false;
   group.add(self._shadow);
 
   // capsule can have same dimensions as shadow
