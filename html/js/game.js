@@ -297,7 +297,7 @@ Game.prototype._updateClient = function(time) {
 
   if (!self._chat.isSelected()) {
     var keystate = 0;
-    if (self._game.input.keyboard.isDown(Phaser.Keyboard.T)) {
+    if (self._selectInputPressed()) {
       self._clearClientKeystate();
       self._chat.selectInput();
     } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
@@ -320,6 +320,11 @@ Game.prototype._updateClient = function(time) {
     self._broadcastClientState();
   }
 
+};
+
+Game.prototype._selectInputPressed = function() {
+  var self = this;
+  return self._game.input.keyboard.isDown(Phaser.Keyboard.T);
 };
 
 Game.prototype._leftPressed = function() {

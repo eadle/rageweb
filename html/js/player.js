@@ -94,15 +94,17 @@ function Player(game, group, options) {
   // player name should be above sprite
   self._textYOffset = -87;
   self._text = new Phaser.Text(game, position.x, position.y + self._textYOffset, self._name);
-  console.log(self._text.style);
+  //self._text = new Phaser.Text(game, 0, 0, self._name);
+  self._text.smoothed = false;
   self._text.font = 'Press Start 2P';
   self._text.fontSize = '8px';
-  self._text.align = 'left';
+  self._text.fontWeight = 'normal';
+  self._text.align = '0px';
   self._text.fill = (typeof options.textFill === 'string') ? options.textFill : '#FF0000';
   self._text.stroke = '#000000';
   self._text.strokeThickness = 2;
+  //console.log(self._text.style);
   self._text.anchor.setTo(0.5, 0.0);
-  self._text.smoothed = false;
   group.add(self._text);
 
   // player sprite and animations
