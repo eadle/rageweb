@@ -42,7 +42,7 @@ function Player(game, group, options) {
   }
 
   self._id = (typeof options.id === 'string') ? options.id : undefined;
-  self._name = (typeof options.name === 'string') ? options.name : undefined;
+  self._name = (typeof options.name === 'string') ? options.name : '???';
   var position = (typeof options.position === 'object') ? options.position : Player.START_POS;
   self._debug = (typeof options.debug === 'boolean') ? options.debug : false;
 
@@ -90,6 +90,17 @@ function Player(game, group, options) {
     'thug1-recover-1.png',
     'thug1-recover-2.png'
   ];
+
+  // player name should be above sprite
+  self._textYOffset = -85;
+  self._text = new Phaser.Text(game, position.x, position.y + self._textYOffset, self._name);
+  console.log(self._text.style);
+  self._text.font = 'Press Start 2P';
+  self._text.fontSize = '8px';
+  self._text.align = 'left';
+  self._text.anchor.setTo(0.5, 0.0);
+  self._text.smoothed = false;
+  group.add(self._text);
 
   // player sprite and animations
   self._sprite = new Phaser.Sprite(game, position.x, position.y, 'thug1', idle[0]);
@@ -289,6 +300,10 @@ Player.prototype._lockSpritesToBody = function() {
   }
   self._sprite.z = self._shadow.y;
 
+  // lock text to body
+  self._text.x = self._body.x - 1;
+  self._text.y = self._body.y + self._textYOffset - 1;
+
   // if debugging physics body
   if (self._debug) {
     self._body.debugBody.x = self._body.x;
@@ -303,10 +318,14 @@ Player.prototype._forceProperSpriteRendering = function() {
       spriteXOffset = (self._sprite.width%2)  ? 0 : -0.5,
       shadowYOffset = (self._shadow.height%2) ? 0 : -0.5,
       spriteYOffset = (self._sprite.height%2) ? 0 : -0.5;
+      // textXOffset = (self._text.width%2)  ? 0 : - 0.5,
+      // textYOffset = (self._text.height%2) ? 0 : - 0.5;
   self._shadow.x = Math.round(self._shadow.x) + shadowXOffset;
   self._shadow.y = Math.round(self._shadow.y) + shadowYOffset;
   self._sprite.x = Math.round(self._sprite.x) + spriteXOffset;
   self._sprite.y = Math.round(self._sprite.y) + spriteYOffset;
+  // self._text.x = Math.round(self._text.x) + textXOffset;
+  // self._text.y = Math.round(self._text.y) + textYOffset;
 };
 
 Player.prototype.update = function(time) {

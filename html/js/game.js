@@ -33,6 +33,7 @@ function Game(options) {
       self._game.time.advancedTiming = Game.DEBUGGING;
       self._game.stage.disableVisibilityChange = Game.DEBUGGING;
       // load assets
+      self._game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
       self._game.load.tilemap('subway-map', 'assets/maps/subway32.json',null, Phaser.Tilemap.TILED_JSON);
       self._game.load.atlas('thug1', 'assets/images/thug1.png', 'assets/atlases/thug1.json');
       self._game.load.image('subway', 'assets/images/subway32.png');
