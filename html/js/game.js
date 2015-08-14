@@ -2,6 +2,7 @@
 
 Game.WIDTH = 512;
 Game.HEIGHT = 256;
+Game.ASPECT = Game.WIDTH/Game.HEIGHT;
 Game.SERVER = 'ws://' + window.location.hostname + ':8188';
 Game.DEBUGGING = true;
 
@@ -42,7 +43,7 @@ function Game(options) {
     create: function() {
       // connect to server and initialize chat
       self._setupServerConnection(Game.SERVER);
-      self._chat = new Chat();
+      self._chat = new Chat(self._game.parent);
       // start physics system
       self._game.physics.startSystem(Phaser.Physics.P2JS, {useElapsedTime: true});
       self._game.physics.p2.useElapsedTime = true;
@@ -61,6 +62,8 @@ function Game(options) {
       // player sprite group and cursor input
       self._playerGroup = self._game.add.group();
       self._cursors = self._game.input.keyboard.createCursorKeys();
+      // resize chat
+      self._resizeChat();
     },
     update: function() {
       var time = new Date().getTime();
@@ -88,16 +91,25 @@ function Game(options) {
 
 Game.prototype._setupCanvasScaling = function() {
   var self = this;
-  window.onresize = function() {
-    self._game.scale.refresh();
-  };
-  // canvas scaling
+
   self._game.scale.minWidth  = Game.WIDTH;
   self._game.scale.minHeight = Game.HEIGHT;
   self._game.scale.maxWidth  = 2*Game.WIDTH;
   self._game.scale.maxHeight = 2*Game.HEIGHT;
   self._game.scale.pageAlignHorizontally = true;
   self._game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+
+  window.onresize = function() {
+    self._resizeChat();
+  };
+
+};
+
+Game.prototype._resizeChat = function() {
+  var self = this;
+  var width = (window.innerWidth > 2*Game.WIDTH) ? 2*Game.WIDTH :
+    (window.innerWidth < Game.WIDTH) ? Game.WIDTH : window.innerWidth;
+  self._chat.resize(width/Game.ASPECT);
 };
 
 /* An ugly function to make the game pretty. */
@@ -144,8 +156,6 @@ Game.prototype.send = function(message) {
 
 Game.prototype.selectCanvas = function() {
   var self = this;
-
-
   self._canvasElement.click();
 };
 

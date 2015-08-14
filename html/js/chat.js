@@ -2,7 +2,7 @@
 
 Chat.CHAR_LIMIT = 300;
 
-function Chat() {
+function Chat(parentId) {
   var self = this;
   
   self._name = '';
@@ -11,6 +11,8 @@ function Chat() {
   self._requestingHandle = true;
   self._inputSelected = false;
   self._originalTitle = document.title;
+  self._parent = document.getElementById(parentId);
+  self._wrapper = document.getElementById('chat-wrapper');
   self._log = document.getElementById('chat-log');
   self._form = document.getElementById('chat-form');
   self._input = document.getElementById('chat-input');
@@ -20,6 +22,24 @@ function Chat() {
   self._setupChatInput();
 
 }
+
+Chat.prototype.resize = function(canvasHeight) {
+  var self = this;
+
+  // get total window height
+  var totalHeight = self._wrapper.offsetHeight;
+  // get sum of all elements but chat-log
+  var handleHeight = self._handle.clientHeight,
+      inputHeight = self._input.clientHeight;
+  var logHeight = totalHeight - handleHeight - inputHeight - canvasHeight - 5;
+  if (logHeight < 0) {
+    logHeight = 0;
+  }
+  // set chat-log height
+  self._log.style.height = logHeight + 'px';
+  // scroll to bottom? 
+  self._scrollOrRoll();
+};
 
 Chat.prototype.setName = function(name) {
   var self = this;
