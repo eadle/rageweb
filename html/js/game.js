@@ -264,6 +264,7 @@ Game.prototype._addClient = function(client) {
     name: client.name,
     position: Player.START_POS,
     state: Player.IDLE,
+    textFill: '#00FF00',
     debug: Game.DEBUGGING
   });
   self._client.cameraFollow(self._game);

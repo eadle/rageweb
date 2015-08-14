@@ -98,6 +98,9 @@ function Player(game, group, options) {
   self._text.font = 'Press Start 2P';
   self._text.fontSize = '8px';
   self._text.align = 'left';
+  self._text.fill = (typeof options.textFill === 'string') ? options.textFill : '#FF0000';
+  self._text.stroke = '#000000';
+  self._text.strokeThickness = 2;
   self._text.anchor.setTo(0.5, 0.0);
   self._text.smoothed = false;
   group.add(self._text);
