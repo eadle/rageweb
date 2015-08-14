@@ -89,7 +89,6 @@ function Game(options) {
 Game.prototype._setupCanvasScaling = function() {
   var self = this;
   window.onresize = function() {
-    console.log('onresize');
     self._game.scale.refresh();
   };
   // canvas scaling
@@ -117,15 +116,14 @@ Game.prototype._setupDispatchEvents = function() {
   };
   // on game resize
   self._game.scale.onSizeChange.dispatch = function() {
-    console.log('onSizeChange');
-    console.log('self._game.width: ' + self._game.scale.width);
+    self._canvasElement.style.cssText =
+     'display: block;' +
+     'width: ' + self._game.scale.width + 'px;' +
+     'height: ' + self._game.scale.height + 'px;' +
+     'cursor: inherit;' +
+     'margin-left: 0px;';
     if (self._game.scale.width%Game.WIDTH === 0) {
-      self._canvasElement.style.cssText =
-       'display: block;' +
-       'width: ' + self._game.scale.width + 'px;' +
-       'height: ' + self._game.scale.height + 'px;' +
-       'cursor: inherit;' +
-       'margin-left: 0px;' +
+      self._canvasElement.style.cssText +=
        '-ms-interpolation-mode: nearest-neighbor;' +
        'image-rendering: -moz-crisp-edges;' +
        'image-rendering: -o-crisp-edges;' +
@@ -133,13 +131,6 @@ Game.prototype._setupDispatchEvents = function() {
        'image-rendering: optimize-contrast;' +
        'image-rendering: crisp-edges;' + 
        'image-rendering: pixelated;';
-    } else {
-      self._canvasElement.style.cssText =
-       'display: block;' +
-       'width: ' + self._game.scale.width + 'px;' +
-       'height: ' + self._game.scale.height + 'px;' +
-       'cursor: inherit;' +
-       'margin-left: 0px;';
     }
   };
 };
