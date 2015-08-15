@@ -4,7 +4,7 @@ Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.ASPECT = Game.WIDTH/Game.HEIGHT;
 Game.SERVER = 'ws://' + window.location.hostname + ':8188';
-Game.DEBUGGING = true;
+Game.DEBUGGING = false;
 
 function Game(options) {
   var self = this;
