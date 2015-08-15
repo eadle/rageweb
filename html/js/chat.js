@@ -61,9 +61,17 @@ Chat.prototype.appendUserMessage = function(name, message) {
     self._unseenMessages += 1;
     document.title = '(' + self._unseenMessages + ') ' + self._originalTitle;
   }
-  var textnode = document.createTextNode(message);
-  var li = document.createElement("li");
+  self._messages.appendChild(self._generateListItem(name, message));
+  self._scrollOrRoll();
+};
+
+Chat.prototype._generateListItem = function(name, message) {
+  var self = this;
+
+  var li = document.createElement("li"),
+      textnode = document.createTextNode(message);
   li.innerHTML = '<a class="user" onclick=\'game.selectUser("'+name+'")\'>&lt'+name+'&gt&nbsp</a>';
+
   if (message[0] === '>') {
     // greentext message
     var span = document.createElement('span');
@@ -74,8 +82,8 @@ Chat.prototype.appendUserMessage = function(name, message) {
     // normal message
     li.appendChild(textnode);
   }
-  self._messages.appendChild(li);
-  self._scrollOrRoll();
+
+  return li;
 };
 
 Chat.prototype.appendSessionMessage = function(message) {

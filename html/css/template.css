@@ -17,12 +17,14 @@ body {
   color: #00FF00;
 }
 
-.spoiler {
-  /* white text on white background */
+.spoiler:hover  {
+  color: #000000;
 }
 
-.spoiler:hover {
-  /* black text on white background */
+.spoiler {
+  color: #FFFFFF;
+  background: #FFFFFF;
+  text-decoration: none;
 }
 
 #chat-wrapper {
