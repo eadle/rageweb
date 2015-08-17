@@ -31,7 +31,7 @@ function Game(options) {
       self._game.antialias = false;
       self._game.stage.backgroundColor = '#222244';
       self._game.time.advancedTiming = Game.DEBUGGING;
-      self._game.stage.disableVisibilityChange = Game.DEBUGGING;
+      self._game.stage.disableVisibilityChange = true;
       // load assets
       self._game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
       self._game.load.tilemap('subway-map', 'assets/maps/subway32.json',null, Phaser.Tilemap.TILED_JSON);
