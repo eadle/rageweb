@@ -235,7 +235,7 @@ PhysicsFactory.prototype.buildBodies = function(key) {
     var center = frameConfig.center,
         group = frameConfig.group;
     for (var gi = 0; gi < group.length; gi++) {
-      console.log(JSON.stringify(group[gi]));
+      // console.log(JSON.stringify(group[gi]));
       bodies[frameName] = {
         group: group.collisionGroup,
         right: self._getPhysicsBody(group[gi].imported, center),

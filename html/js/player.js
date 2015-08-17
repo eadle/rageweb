@@ -54,41 +54,41 @@ function Player(game, group, options) {
 
   // FIXME Player should be base class
   var idle = [
-    'thug1-idle-0.png',
-    'thug1-idle-1.png',
-    'thug1-idle-2.png',
-    'thug1-idle-1.png'
+    'thug1-idle-0',
+    'thug1-idle-1',
+    'thug1-idle-2',
+    'thug1-idle-1'
   ];
 
   var walk = [
-    'thug1-walk-0.png',
-    'thug1-walk-1.png',
-    'thug1-walk-2.png',
-    'thug1-walk-1.png'
+    'thug1-walk-0',
+    'thug1-walk-1',
+    'thug1-walk-2',
+    'thug1-walk-1'
   ];
 
   var punch = [
-    'thug1-punch.png'
+    'thug1-punch'
   ];
 
   var headbutt = [
-    'thug1-headbutt-0.png',
-    'thug1-headbutt-1.png',
-    'thug1-headbutt-2.png'
+    'thug1-headbutt-0',
+    'thug1-headbutt-1',
+    'thug1-headbutt-2'
   ];
 
   var hit = [
-    'thug1-hit-0.png'
+    'thug1-hit-0'
   ];
 
   var falling = [
-    'thug1-hit-1.png'
+    'thug1-hit-1'
   ];
 
   var recover = [
-    'thug1-recover-0.png',
-    'thug1-recover-1.png',
-    'thug1-recover-2.png'
+    'thug1-recover-0',
+    'thug1-recover-1',
+    'thug1-recover-2'
   ];
 
   // player name should be above sprite
@@ -103,9 +103,16 @@ function Player(game, group, options) {
   self._text.strokeThickness = 2;
   self._text.anchor.setTo(0.5, 0.0);
   group.add(self._text);
+  // shadow only used when falling
+  self._shadow = new Phaser.Sprite(game, position.x, position.y, 'thug-atlas', 'thug1-shadow');
+  self._shadow.anchor.setTo(0.5, 1.0);
+  self._shadow.visible = false;
+  self._shadow.smoothed = false;
+  group.add(self._shadow);
+
 
   // player sprite and animations
-  self._sprite = new Phaser.Sprite(game, position.x, position.y, 'thug1', idle[0]);
+  self._sprite = new Phaser.Sprite(game, position.x, position.y, 'thug-atlas', idle[0]);
   self._sprite.animations.add('idle', idle);
   self._sprite.animations.add('walk', walk);
   self._sprite.animations.add('punch', punch);
@@ -116,23 +123,40 @@ function Player(game, group, options) {
   self._sprite.anchor.setTo(0.5, 1.0);
   self._sprite.smoothed = false;
   group.add(self._sprite);
-
-  // shadow only used when falling
-  self._shadow = new Phaser.Sprite(game, position.x, position.y, 'thug1', 'thug1-shadow.png');
-  self._shadow.anchor.setTo(0.5, 1.0);
-  self._shadow.visible = false;
-  self._shadow.smoothed = false;
-  group.add(self._shadow);
-
+  // setup physics bodies
+  self._collisionBodies = options.bodies;
+  self._activeBody = self._collisionBodies[idle[0]].right;
+  self._activeBody.debug = true;
+  self._lastFrame = self._sprite.frameName;
+  // temporaryily here for testing
+  self._sprite.update = function() {
+    if (this.frameName !== self._lastFrame) {
+      if (self._activeBody) {
+        self._activeBody.debug = false;
+      }
+      if (this.frameName in self._collisionBodies) {
+        var facingLeft = (self._sprite.scale.x < 0);
+        self._activeBody = (self._sprite.scale.x < 0) ?
+          self._collisionBodies[this.frameName].left : self._collisionBodies[this.frameName].right;
+        self._activeBody.debug = true;
+        self._activeBody.x = self._sprite.x;
+        self._activeBody.y = self._sprite.y - self._sprite.height/2;
+        self._activeBody.debugBody.x = self._activeBody.x;
+        self._activeBody.debugBody.y = self._activeBody.y;
+        self._activeBody.debugBody.rotation = self._activeBody.rotation;
+      }
+      self._lastFrame = this.frameName;
+    }
+  };
   // capsule can have same dimensions as shadow
   var radius = self._shadow.height/1.5;
   self._yOffset = radius/2;
-  self._body = new Phaser.Physics.P2.Body(game, null, position.x, position.y, 1);
-  self._body.addCircle(radius);
-  self._body.debug = self._debug;
-  self._body.immovable = true;
-  // enable physics body
-  game.physics.p2.addBody(self._body);
+  self._worldBody = new Phaser.Physics.P2.Body(game, null, position.x, position.y, 1);
+  self._worldBody.addCircle(radius);
+  self._worldBody.debug = self._debug;
+  self._worldBody.immovable = true;
+  game.physics.p2.addBody(self._worldBody);
+
 
   self._state = 0;
   self._keystate = 0;
@@ -156,7 +180,8 @@ Player.prototype.cameraFollow = function(game) {
 
 Player.prototype.destroy = function() {
   var self = this;
-  self._body.destroy();
+  // TODO destroy physics shapes
+  self._worldBody.destroy();
   self._shadow.destroy();
   self._sprite.destroy();
   self._text.destroy();
@@ -167,7 +192,7 @@ Player.prototype.getName = function() {
 };
 
 Player.prototype.getPosition = function() {
-  return {x: this._body.x, y: this._body.y};
+  return {x: this._worldBody.x, y: this._worldBody.y};
 };
 
 Player.prototype.getKeystate = function() {
@@ -176,8 +201,8 @@ Player.prototype.getKeystate = function() {
 
 Player.prototype.setPosition = function(position) {
   var self = this;
-  self._body.x = position.x;
-  self._body.y = position.y;
+  self._worldBody.x = position.x;
+  self._worldBody.y = position.y;
   self._lockSpritesToBody();
 };
 
@@ -293,28 +318,30 @@ Player.prototype._lockSpritesToBody = function() {
   var self = this;
 
   // lock shadow to body
-  self._shadow.x = self._body.x;
-  self._shadow.y = self._body.y + self._yOffset;
+  self._shadow.x = self._worldBody.x;
+  self._shadow.y = self._worldBody.y + self._yOffset;
   self._shadow.z = self._shadow.y;
 
   // lock sprite to body
-  self._sprite.x = self._body.x;
+  self._sprite.x = self._worldBody.x;
   if (self._state !== Player.FALL) {
     self._sprite.y = self._shadow.y;
   }
   self._sprite.z = self._shadow.z;
 
   // lock text to body
-  self._text.x = self._body.x - 1;
+  self._text.x = self._worldBody.x - 1;
   self._text.y = self._sprite.y + self._textYOffset - 1;
   self._text.z = self._sprite.z;
 
   // if debugging physics body
   if (self._debug) {
-    self._body.debugBody.x = self._body.x;
-    self._body.debugBody.y = self._body.y;
-    self._body.debugBody.rotation = self._body.rotation;
+    self._worldBody.debugBody.x = self._worldBody.x;
+    self._worldBody.debugBody.y = self._worldBody.y;
+    self._worldBody.debugBody.rotation = self._worldBody.rotation;
   }
+
+
 };
 
 Player.prototype._forceProperSpriteRendering = function() {
@@ -333,17 +360,17 @@ Player.prototype.update = function(time) {
   var self = this;
 
   // clear velocity
-  self._body.velocity.x = 0;
-  self._body.velocity.y = 0;
+  self._worldBody.velocity.x = 0;
+  self._worldBody.velocity.y = 0;
 
   switch (self._state) {
     case Player.WALK:
       var dx = Player.MAX_SPEED,
           dy = Player.MAX_SPEED/2;
-      if (self._keystate & Player.LEFT_PRESSED)  self._body.moveLeft(dx);
-      if (self._keystate & Player.RIGHT_PRESSED) self._body.moveRight(dx);
-      if (self._keystate & Player.UP_PRESSED)    self._body.moveUp(dy);
-      if (self._keystate & Player.DOWN_PRESSED)  self._body.moveDown(dy);
+      if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
+      if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
+      if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
+      if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
       break;
     case Player.HIT:
       var dt = time - self._hitTime;

@@ -4,7 +4,7 @@ Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.ASPECT = Game.WIDTH/Game.HEIGHT;
 Game.SERVER = 'ws://' + window.location.hostname + ':8188';
-Game.DEBUGGING = false;
+Game.DEBUGGING = true;
 
 function Game(options) {
   var self = this;
@@ -22,6 +22,7 @@ function Game(options) {
   self._map = null;
   self._layers = [];
   self._collision = null;
+  self._physicsFactory = null;
 
   self._game = new Phaser.Game(Game.WIDTH, Game.HEIGHT, Phaser.CANVAS, 'phaser-example', {
     preload: function() {
@@ -34,8 +35,9 @@ function Game(options) {
       self._game.stage.disableVisibilityChange = true;
       // load assets
       self._game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
+      self._game.load.atlas('thug-atlas', 'assets/images/thug1.png', 'assets/atlases/thug1.json');
+      self._game.load.physics('thug-physics', 'assets/physics/thug1-physics.json');
       self._game.load.tilemap('subway-map', 'assets/maps/subway32.json',null, Phaser.Tilemap.TILED_JSON);
-      self._game.load.atlas('thug1', 'assets/images/thug1.png', 'assets/atlases/thug1.json');
       self._game.load.image('subway', 'assets/images/subway32.png');
       // UI callbacks
       self._setupCanvasScaling();
@@ -48,6 +50,8 @@ function Game(options) {
       // start physics system
       self._game.physics.startSystem(Phaser.Physics.P2JS, {useElapsedTime: true});
       self._game.physics.p2.useElapsedTime = true;
+      self._physicsFactory = new PhysicsFactory(self._game);
+      self._physicsFactory.addKey('thug', 'thug-atlas', 'thug-physics');
       // load subway layers and collision 
       self._map = self._game.add.tilemap('subway-map');
       self._map.addTilesetImage('subway');
@@ -235,7 +239,8 @@ Game.prototype._addPlayer = function(player) {
     name: player.name,
     position: player.position,
     state: player.state,
-    debug: Game.DEBUGGING
+    debug: Game.DEBUGGING,
+    bodies: self._physicsFactory.buildBodies('thug')
   });
   self._chat.appendSessionMessage('['+player.name+' joined]');
 };
@@ -265,7 +270,8 @@ Game.prototype._addClient = function(client) {
     position: Player.START_POS,
     state: Player.IDLE,
     textFill: '#00FF00',
-    debug: Game.DEBUGGING
+    debug: Game.DEBUGGING,
+    bodies: self._physicsFactory.buildBodies('thug')
   });
   self._client.cameraFollow(self._game);
   self._chat.setName(client.name);
