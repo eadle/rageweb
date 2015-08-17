@@ -112,7 +112,8 @@ function Player(game, group, options) {
 
 
   // player sprite and animations
-  self._sprite = new Phaser.Sprite(game, position.x, position.y, 'thug-atlas', idle[0]);
+  self._lastFrame = idle[0];
+  self._sprite = new Phaser.Sprite(game, position.x, position.y, 'thug-atlas', self._lastFrame);
   self._sprite.animations.add('idle', idle);
   self._sprite.animations.add('walk', walk);
   self._sprite.animations.add('punch', punch);
@@ -123,11 +124,12 @@ function Player(game, group, options) {
   self._sprite.anchor.setTo(0.5, 1.0);
   self._sprite.smoothed = false;
   group.add(self._sprite);
-  // setup physics bodies
+
+  // setup collision bodies
   self._collisionBodies = options.bodies;
   self._activeBody = self._collisionBodies[idle[0]].right;
   self._activeBody.debug = true;
-  self._lastFrame = self._sprite.frameName;
+
   // capsule can have same dimensions as shadow
   var radius = self._shadow.height/1.5;
   self._yOffset = radius/2;
@@ -159,11 +161,19 @@ Player.prototype.cameraFollow = function(game) {
 
 Player.prototype.destroy = function() {
   var self = this;
-  // TODO destroy physics shapes
+
   self._worldBody.destroy();
   self._shadow.destroy();
   self._sprite.destroy();
   self._text.destroy();
+
+  // destroy collision bodies
+  Object.keys(self._collisionBodies).forEach(function(key) {
+    self._collisionBodies[key].right.destroy();
+    self._collisionBodies[key].left.destroy();
+    delete self._collisionBodies[key];
+  });
+
 };
 
 Player.prototype.getName = function() {
