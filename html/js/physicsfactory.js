@@ -45,13 +45,13 @@ PhysicsFactory.prototype.addKey = function(key, atlas, physics, options) {
   var allPhysicsData = self._game.cache.getPhysicsData(physics);
   for (var ii = 0; ii < frames.length; ii++) {
     var frameName = frames[ii].name;
-    frameName = (self._trimSpriteNames) ? frameName.replace(/\..+$/, '') : frameNmae;
+    frameName = (self._trimSpriteNames) ? frameName.replace(/\..+$/, '') : frameName;
     // if the sprite has a physics body
     if (frameName in allPhysicsData) {
       var center = {x: frames[ii].centerX, y: frames[ii].centerY};
       var data = self._stripPhysicsData(allPhysicsData[frameName]);
       var flipped = self._flipPhysicsData(data, center, true);
-      // store shapes in collision group hash
+      // store shapes in collision group array
       var group = [];
       for (var di = 0; di < data.length; di++) {
         var collisionGroup = data[di].filter.categoryBits;
