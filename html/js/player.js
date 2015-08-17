@@ -128,26 +128,6 @@ function Player(game, group, options) {
   self._activeBody = self._collisionBodies[idle[0]].right;
   self._activeBody.debug = true;
   self._lastFrame = self._sprite.frameName;
-  // temporaryily here for testing
-  self._sprite.update = function() {
-    if (this.frameName !== self._lastFrame) {
-      if (self._activeBody) {
-        self._activeBody.debug = false;
-      }
-      if (this.frameName in self._collisionBodies) {
-        var facingLeft = (self._sprite.scale.x < 0);
-        self._activeBody = (self._sprite.scale.x < 0) ?
-          self._collisionBodies[this.frameName].left : self._collisionBodies[this.frameName].right;
-        self._activeBody.debug = true;
-        self._activeBody.x = self._sprite.x;
-        self._activeBody.y = self._sprite.y - self._sprite.height/2;
-        self._activeBody.debugBody.x = self._activeBody.x;
-        self._activeBody.debugBody.y = self._activeBody.y;
-        self._activeBody.debugBody.rotation = self._activeBody.rotation;
-      }
-      self._lastFrame = this.frameName;
-    }
-  };
   // capsule can have same dimensions as shadow
   var radius = self._shadow.height/1.5;
   self._yOffset = radius/2;
@@ -156,7 +136,6 @@ function Player(game, group, options) {
   self._worldBody.debug = self._debug;
   self._worldBody.immovable = true;
   game.physics.p2.addBody(self._worldBody);
-
 
   self._state = 0;
   self._keystate = 0;
@@ -203,7 +182,7 @@ Player.prototype.setPosition = function(position) {
   var self = this;
   self._worldBody.x = position.x;
   self._worldBody.y = position.y;
-  self._lockSpritesToBody();
+  self._updateSprites();
 };
 
 Player.prototype.changedDirection = function() {
@@ -314,7 +293,7 @@ Player.prototype.setKeystate = function(keystate) {
   };
 };
 
-Player.prototype._lockSpritesToBody = function() {
+Player.prototype._updateSprites = function() {
   var self = this;
 
   // lock shadow to body
@@ -341,6 +320,34 @@ Player.prototype._lockSpritesToBody = function() {
     self._worldBody.debugBody.rotation = self._worldBody.rotation;
   }
 
+};
+
+Player.prototype._updateCollisionBody = function() {
+  var self = this;
+
+  // temporaryily here for testing
+  var frameName = self._sprite.frameName;
+  if (frameName !== self._lastFrame) {
+    if (self._activeBody) {
+      self._activeBody.debug = false; 
+    }
+    if (frameName in self._collisionBodies) {
+      self._activeBody = (self._sprite.scale.x < 0) ?
+        self._collisionBodies[frameName].left : self._collisionBodies[frameName].right;
+      self._activeBody.debug = true; 
+    }
+    self._lastFrame = frameName;
+  } 
+
+  if (self._activeBody) {
+    self._activeBody.x = self._sprite.x;
+    self._activeBody.y = self._sprite.y - self._sprite.height/2;
+    if (self._activeBody.debugBody) {
+      self._activeBody.debugBody.x = self._activeBody.x;
+      self._activeBody.debugBody.y = self._activeBody.y;
+      self._activeBody.debugBody.rotation = self._activeBody.rotation;
+    }
+  }
 
 };
 
@@ -389,7 +396,6 @@ Player.prototype.update = function(time) {
       if (self._sprite.y > self._yAtHit) {
         // start recovering
         self._sprite.y = self._yAtHit;
-
         self._setRecover();
       }
       break;
@@ -413,7 +419,8 @@ Player.prototype.update = function(time) {
     default:
   };
 
-  self._lockSpritesToBody();
+  self._updateSprites();
+  self._updateCollisionBody();
   self._forceProperSpriteRendering();
 
 };
