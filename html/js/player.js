@@ -403,7 +403,7 @@ Player.prototype.update = function(time) {
       self._sprite.y = self._yAtHit + v0y*t + 0.5*g*t*t;
       self._sprite.z = self._shadow.y;
       // if falling animation has completed
-      if (self._sprite.y > self._yAtHit) {
+      if (self._sprite.y > self._yAtHit && t > 0) {
         // start recovering
         self._sprite.y = self._yAtHit;
         self._setRecover();
