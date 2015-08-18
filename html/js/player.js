@@ -28,7 +28,7 @@ Player.CAN_HIT    = ~(Player.HIT | Player.FALL | Player.RECOVER);
 Player.CAN_PUNCH  = Player.CAN_HIT;
 Player.START_POS  = {x: 256, y: 220}; // temp
 
-function Player(game, group, options) {
+function Player(game, spriteGroup, options) {
   var self = this;
   options = options || {};
 
@@ -36,8 +36,8 @@ function Player(game, group, options) {
     throw new Error('Player expects valid game context');
     return null;
   }
-  if (typeof group !== 'object') {
-    throw new Error('Player expects valid game group');
+  if (typeof spriteGroup !== 'object') {
+    throw new Error('Player expects valid game sprite group');
     return null;
   }
 
@@ -102,13 +102,13 @@ function Player(game, group, options) {
   self._text.stroke = '#000000';
   self._text.strokeThickness = 2;
   self._text.anchor.setTo(0.5, 0.0);
-  group.add(self._text);
+  spriteGroup.add(self._text);
   // shadow only used when falling
   self._shadow = new Phaser.Sprite(game, position.x, position.y, 'thug-atlas', 'thug1-shadow');
   self._shadow.anchor.setTo(0.5, 1.0);
   self._shadow.visible = false;
   self._shadow.smoothed = false;
-  group.add(self._shadow);
+  spriteGroup.add(self._shadow);
 
 
   // player sprite and animations
@@ -123,7 +123,7 @@ function Player(game, group, options) {
   self._sprite.animations.add('recover', recover);
   self._sprite.anchor.setTo(0.5, 1.0);
   self._sprite.smoothed = false;
-  group.add(self._sprite);
+  spriteGroup.add(self._sprite);
 
   // setup collision bodies
   self._collisionBodies = options.bodies;
@@ -136,8 +136,15 @@ function Player(game, group, options) {
   self._worldBody = new Phaser.Physics.P2.Body(game, null, position.x, position.y, 1);
   self._worldBody.addCircle(radius);
   self._worldBody.debug = self._debug;
-  self._worldBody.immovable = true;
   game.physics.p2.addBody(self._worldBody);
+
+  // FIXME make this a function -- setCollisionGroups or something
+  if (typeof options.worldCollisionGroup === 'object' && typeof options.playerCollisionGroup === 'object') {
+    var worldCollisionGroup = options.worldCollisionGroup;
+    var playerCollisionGroup = options.playerCollisionGroup;
+    self._worldBody.setCollisionGroup(playerCollisionGroup);
+    self._worldBody.collides([worldCollisionGroup]);
+  }
 
   self._state = 0;
   self._keystate = 0;

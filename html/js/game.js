@@ -4,7 +4,7 @@ Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.ASPECT = Game.WIDTH/Game.HEIGHT;
 Game.SERVER = 'ws://' + window.location.hostname + ':8188';
-Game.DEBUGGING = false;
+Game.DEBUGGING = true;
 
 function Game(options) {
   var self = this;
@@ -17,12 +17,13 @@ function Game(options) {
   self._cursors = null;
   self._client = null;
   self._players = {};
-  self._playerGroup = null;
+  self._playerSpriteGroup = null;
 
   self._map = null;
   self._layers = [];
-  self._collision = null;
+  self._worldCollision = null;
   self._physicsFactory = null;
+  self._worldCollisionGroup = null;
 
   self._game = new Phaser.Game(Game.WIDTH, Game.HEIGHT, Phaser.CANVAS, 'phaser-example', {
     preload: function() {
@@ -47,26 +48,40 @@ function Game(options) {
       // connect to server and initialize chat
       self._setupServerConnection(Game.SERVER);
       self._chat = new Chat(self._game.parent);
+
       // start physics system
       self._game.physics.startSystem(Phaser.Physics.P2JS, {useElapsedTime: true});
       self._game.physics.p2.useElapsedTime = true;
+
+      // create collision groups
+      self._game.physics.p2.updateBoundsCollisionGroup();
+      self._worldCollisionGroup = self._game.physics.p2.createCollisionGroup();
+      self._playerCollisionGroup = self._game.physics.p2.createCollisionGroup();
+
+      // setup physics factory
       self._physicsFactory = new PhysicsFactory(self._game);
       self._physicsFactory.addKey('thug', 'thug-atlas', 'thug-physics');
-      // load subway layers and collision 
+
+      // create map and load tile layers
       self._map = self._game.add.tilemap('subway-map');
       self._map.addTilesetImage('subway');
       for (var ii = 0; ii < self._map.layers.length; ii++) {
         var layer = self._map.createLayer(self._map.layers[ii].name);
-        layer.resizeWorld();
         self._layers.push(layer);
       }
-      self._collision = self._game.physics.p2.convertCollisionObjects(self._map, 'collision');
-      for (var ii = 0; ii < self._collision.length; ii++) {
-        self._collision[ii].debug = Game.DEBUGGING;
+
+      // add collision layer to physics world
+      self._worldCollision = self._game.physics.p2.convertCollisionObjects(self._map, 'collision');
+      for (var ii = 0; ii < self._worldCollision.length; ii++) {
+        self._worldCollision[ii].debug = Game.DEBUGGING;
+        self._worldCollision[ii].setCollisionGroup(self._worldCollisionGroup);
+        self._worldCollision[ii].collides([self._playerCollisionGroup]);
       }   
+
       // player sprite group and cursor input
-      self._playerGroup = self._game.add.group();
+      self._playerSpriteGroup = self._game.add.group();
       self._cursors = self._game.input.keyboard.createCursorKeys();
+
       // resize chat
       self._resizeChat();
     },
@@ -76,7 +91,7 @@ function Game(options) {
       if (self._client) {
         self._updateClient(time);
       }
-      self._playerGroup.sort('z', Phaser.Group.SORT_ASCENDING);
+      self._playerSpriteGroup.sort('z', Phaser.Group.SORT_ASCENDING);
     },
     render: function() {
       if (Game.DEBUGGING) {
@@ -234,13 +249,15 @@ Game.prototype._setupServerConnection = function(server) {
 
 Game.prototype._addPlayer = function(player) {
   var self = this;
-  self._players[player.id] = new Player(self._game, self._playerGroup, {
+  self._players[player.id] = new Player(self._game, self._playerSpriteGroup, {
     id: player.id,
     name: player.name,
     position: player.position,
     state: player.state,
     debug: Game.DEBUGGING,
-    bodies: self._physicsFactory.buildBodies('thug')
+    bodies: self._physicsFactory.buildBodies('thug'),
+    playerCollisionGroup: self._playerCollisionGroup,
+    worldCollisionGroup: self._worldCollisionGroup
   });
   self._chat.appendSessionMessage('['+player.name+' joined]');
 };
@@ -264,14 +281,16 @@ Game.prototype._updatePlayers = function(time) {
 
 Game.prototype._addClient = function(client) {
   var self = this;
-  self._client = new Player(self._game, self._playerGroup, {
+  self._client = new Player(self._game, self._playerSpriteGroup, {
     id: client.id,
     name: client.name,
     position: Player.START_POS,
     state: Player.IDLE,
     textFill: '#00FF00',
     debug: Game.DEBUGGING,
-    bodies: self._physicsFactory.buildBodies('thug')
+    bodies: self._physicsFactory.buildBodies('thug'),
+    playerCollisionGroup: self._playerCollisionGroup,
+    worldCollisionGroup: self._worldCollisionGroup
   });
   self._client.cameraFollow(self._game);
   self._chat.setName(client.name);
