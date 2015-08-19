@@ -28,16 +28,12 @@ Player.CAN_HIT    = ~(Player.HIT | Player.FALL | Player.RECOVER);
 Player.CAN_PUNCH  = Player.CAN_HIT;
 Player.START_POS  = {x: 256, y: 220}; // temp
 
-function Player(game, spriteGroup, options) {
+function Player(game, options) {
   var self = this;
   options = options || {};
 
   if (typeof game !== 'object') {
     throw new Error('Player expects valid game context');
-    return null;
-  }
-  if (typeof spriteGroup !== 'object') {
-    throw new Error('Player expects valid game sprite group');
     return null;
   }
 
@@ -102,15 +98,11 @@ function Player(game, spriteGroup, options) {
   self._text.stroke = '#000000';
   self._text.strokeThickness = 2;
   self._text.anchor.setTo(0.5, 0.0);
-  spriteGroup.add(self._text);
   // shadow only used when falling
   self._shadow = new Phaser.Sprite(game, position.x, position.y, 'thug-atlas', 'thug1-shadow');
   self._shadow.anchor.setTo(0.5, 1.0);
   self._shadow.visible = false;
   self._shadow.smoothed = false;
-  spriteGroup.add(self._shadow);
-
-
   // player sprite and animations
   self._lastFrame = idle[0];
   self._sprite = new Phaser.Sprite(game, position.x, position.y, 'thug-atlas', self._lastFrame);
@@ -123,7 +115,13 @@ function Player(game, spriteGroup, options) {
   self._sprite.animations.add('recover', recover);
   self._sprite.anchor.setTo(0.5, 1.0);
   self._sprite.smoothed = false;
-  spriteGroup.add(self._sprite);
+  // add graphics to sprite group
+  if (typeof options.spriteGroup === 'object') {
+    var spriteGroup = options.spriteGroup;
+    spriteGroup.add(self._text);
+    spriteGroup.add(self._shadow);
+    spriteGroup.add(self._sprite);
+  }
 
   // setup collision bodies
   self._collisionBodies = options.bodies;

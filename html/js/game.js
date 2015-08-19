@@ -23,7 +23,10 @@ function Game(options) {
   self._layers = [];
   self._worldCollision = null;
   self._physicsFactory = null;
-  self._worldCollisionGroup = null;
+  self._worldCollisionGroup  = null;
+  self._playerCollisionGroup = null;
+  self._hitboxCollisionGroup = null;
+  self._attackCollisionGroup = null;
 
   self._game = new Phaser.Game(Game.WIDTH, Game.HEIGHT, Phaser.CANVAS, 'phaser-example', {
     preload: function() {
@@ -64,12 +67,17 @@ function Game(options) {
 
       // create collision groups
       self._game.physics.p2.updateBoundsCollisionGroup();
-      self._worldCollisionGroup = self._game.physics.p2.createCollisionGroup();
+      self._worldCollisionGroup  = self._game.physics.p2.createCollisionGroup();
       self._playerCollisionGroup = self._game.physics.p2.createCollisionGroup();
+      self._hitboxCollisionGroup = self._game.physics.p2.createCollisionGroup();
+      self._attackCollisionGroup = self._game.physics.p2.createCollisionGroup();
 
       // setup physics factory
-      self._physicsFactory = new PhysicsFactory(self._game);
-      self._physicsFactory.addKey('thug', 'thug-atlas', 'thug-physics');
+      var physicsFactoryGroups = [];
+      physicsFactoryGroups.push({categoryBits: 1, group: self._hitboxCollisionGroup});
+      physicsFactoryGroups.push({categoryBits: 2, group: self._attackCollisionGroup});
+      self._physicsFactory = new PhysicsFactory(self._game, {groups: physicsFactoryGroups});
+      self._physicsFactory.addKey('thug', 'thug-atlas', 'thug-physics', {collides: [[1,2], [2,2]]});
 
       // add collision layer to physics world
       self._worldCollision = self._game.physics.p2.convertCollisionObjects(self._map, 'collision');
@@ -248,22 +256,6 @@ Game.prototype._setupServerConnection = function(server) {
 
 };
 
-Game.prototype._addPlayer = function(player) {
-  var self = this;
-  self._players[player.id] = new Player(self._game, self._playerSpriteGroup, {
-    id: player.id,
-    name: player.name,
-    position: player.position,
-    state: player.state,
-    debug: Game.DEBUGGING,
-    bodies: self._physicsFactory.buildBodies('thug'),
-    playerCollisionGroup: self._playerCollisionGroup,
-    worldCollisionGroup: self._worldCollisionGroup
-  });
-  self._chat.appendSessionMessage('['+player.name+' joined]');
-};
-
-
 Game.prototype._applyStateChange = function(pid, position, state) {
   var self = this;
   if (pid in self._players) {
@@ -272,50 +264,47 @@ Game.prototype._applyStateChange = function(pid, position, state) {
   }
 };
 
-Game.prototype._updatePlayers = function(time) {
-  var self = this;
-  Object.keys(self._players).forEach(function(id) {
-    var player = self._players[id];
-    player.update(time);
-  });
-};
-
 Game.prototype._addClient = function(client) {
   var self = this;
-  self._client = new Player(self._game, self._playerSpriteGroup, {
+  self._client = new Player(self._game, {
     id: client.id,
     name: client.name,
-    position: Player.START_POS,
-    state: Player.IDLE,
     textFill: '#00FF00',
-    debug: Game.DEBUGGING,
-    bodies: self._physicsFactory.buildBodies('thug'),
+    state: Player.IDLE,
+    position: Player.START_POS,
+    spriteGroup: self._playerSpriteGroup,
+    worldCollisionGroup: self._worldCollisionGroup,
     playerCollisionGroup: self._playerCollisionGroup,
-    worldCollisionGroup: self._worldCollisionGroup
+    bodies: self._physicsFactory.buildBodies('thug'),
+    debug: Game.DEBUGGING
   });
   self._client.cameraFollow(self._game);
   self._chat.setName(client.name);
   self._broadcastClientState();
 };
 
-Game.prototype._clearClientKeystate = function() {
+Game.prototype._addPlayer = function(player) {
   var self = this;
-  if (0 !== self._client.getKeystate()) {
-    self._client.setKeystate(0);
-    self._broadcastClientState();
-  }
+  self._players[player.id] = new Player(self._game, {
+    id: player.id,
+    name: player.name,
+    state: player.state,
+    position: player.position,
+    spriteGroup: self._playerSpriteGroup,
+    worldCollisionGroup: self._worldCollisionGroup,
+    playerCollisionGroup: self._playerCollisionGroup,
+    bodies: self._physicsFactory.buildBodies('thug'),
+    debug: Game.DEBUGGING
+  });
+  self._chat.appendSessionMessage('['+player.name+' joined]');
 };
 
-Game.prototype._broadcastClientState = function() {
+Game.prototype._updatePlayers = function(time) {
   var self = this;
-  if (self._client) {
-    self.send({
-      'type': 'state',
-      'id': self._client.id,
-      'position': self._client.getPosition(),
-      'state': self._client.getState()
-    });
-  }
+  Object.keys(self._players).forEach(function(id) {
+    var player = self._players[id];
+    player.update(time);
+  });
 };
 
 Game.prototype._updateClient = function(time) {
@@ -346,6 +335,26 @@ Game.prototype._updateClient = function(time) {
     self._broadcastClientState();
   }
 
+};
+
+Game.prototype._broadcastClientState = function() {
+  var self = this;
+  if (self._client) {
+    self.send({
+      'type': 'state',
+      'id': self._client.id,
+      'position': self._client.getPosition(),
+      'state': self._client.getState()
+    });
+  }
+};
+
+Game.prototype._clearClientKeystate = function() {
+  var self = this;
+  if (0 !== self._client.getKeystate()) {
+    self._client.setKeystate(0);
+    self._broadcastClientState();
+  }
 };
 
 Game.prototype._selectInputPressed = function() {
