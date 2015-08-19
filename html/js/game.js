@@ -4,7 +4,7 @@ Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.ASPECT = Game.WIDTH/Game.HEIGHT;
 Game.SERVER = 'ws://' + window.location.hostname + ':8188';
-Game.DEBUGGING = true;
+Game.DEBUGGING = false;
 
 function Game(options) {
   var self = this;
@@ -49,8 +49,17 @@ function Game(options) {
       self._setupServerConnection(Game.SERVER);
       self._chat = new Chat(self._game.parent);
 
+      // create map and load tile layers
+      self._map = self._game.add.tilemap('subway-map');
+      self._map.addTilesetImage('subway');
+      for (var ii = 0; ii < self._map.layers.length; ii++) {
+        var layer = self._map.createLayer(self._map.layers[ii].name);
+        layer.resizeWorld();  // FIXME
+        self._layers.push(layer);
+      }
+
       // start physics system
-      self._game.physics.startSystem(Phaser.Physics.P2JS, {useElapsedTime: true});
+      self._game.physics.startSystem(Phaser.Physics.P2JS);
       self._game.physics.p2.useElapsedTime = true;
 
       // create collision groups
@@ -61,14 +70,6 @@ function Game(options) {
       // setup physics factory
       self._physicsFactory = new PhysicsFactory(self._game);
       self._physicsFactory.addKey('thug', 'thug-atlas', 'thug-physics');
-
-      // create map and load tile layers
-      self._map = self._game.add.tilemap('subway-map');
-      self._map.addTilesetImage('subway');
-      for (var ii = 0; ii < self._map.layers.length; ii++) {
-        var layer = self._map.createLayer(self._map.layers[ii].name);
-        self._layers.push(layer);
-      }
 
       // add collision layer to physics world
       self._worldCollision = self._game.physics.p2.convertCollisionObjects(self._map, 'collision');
