@@ -1,12 +1,12 @@
 {
   "name": "skellyweb",
   "version": "0.0.0",
-  "description": "networked phaser.io",
+  "description": "networked brawler prototype",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Ed Markowski <siphon@protonmail.com> (https://github.com/siphontv)",
+  "author": "Ed Markowski <siphon@protonmail.com>",
   "license": "GPL 3.0",
   "dependencies": {
     "ws": "^0.7.2"
