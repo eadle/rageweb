@@ -27,8 +27,6 @@ function PhysicsFactory(game, options) {
       self._collisionGroups[categoryBits] = group;
     }
   }
-  console.log('options.groups: ' + JSON.stringify(options.groups));
-  console.log('self._collisionGroups: ' + JSON.stringify(self._collisionGroups));
 
 }
 
@@ -53,12 +51,10 @@ PhysicsFactory.prototype.addKey = function(key, atlas, physics, options) {
   var frames = self._game.cache.getImage(atlas, true).frameData._frames;
   self._playerFrames[key] = frames;
 
-
   // preassemble collides arrays
   self._collidesConfig[key] = {};
   if (typeof options.collides === 'object') {
     var collides = options.collides;
-    // build arrays of collision groups from collides
     for (var ii = 0; ii < collides.length; ii++) {
       if (typeof collides[ii] !== 'object') {
         throw new Error('addKey expects valid collides configuration: ' + 
@@ -66,9 +62,6 @@ PhysicsFactory.prototype.addKey = function(key, atlas, physics, options) {
       }
       self._addCollidesConfig(key, collides[ii]);
     }
-  } else {
-    console.log('RRREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE');
-    console.log('typeof options.collides: ' + typeof options.collides);
   }
 
   // store physics configurations
@@ -85,11 +78,11 @@ PhysicsFactory.prototype.addKey = function(key, atlas, physics, options) {
       // store shapes in collision group array
       var group = [];
       for (var di = 0; di < data.length; di++) {
-        var collisionGroup = data[di].filter.categoryBits;
+        var categoryBits = data[di].filter.categoryBits;
         // search group array for collisionGroup
         var groupIndex = -1;
         for (var gi = 0; gi < group.length; gi++) {
-          if (group[gi].collisionGroup === collisionGroup) {
+          if (group[gi].categoryBits === categoryBits) {
             groupIndex = gi;
             break;
           }
@@ -97,7 +90,7 @@ PhysicsFactory.prototype.addKey = function(key, atlas, physics, options) {
         // initialize group
         if (groupIndex === -1) {
           group.push({
-            collisionGroup: collisionGroup,
+            categoryBits: categoryBits,
             imported: [],
             flipped: []
           });
@@ -148,13 +141,8 @@ PhysicsFactory.prototype._addCollidesConfig = function(key, collides) {
       }
     }
   }
-
   console.log('collidesConfig[' + key + ']: ' + JSON.stringify(self._collidesConfig[key]));
 
-  /* Usage: 
-   * rightBody.setCollisionGroup(self._collisionGroups[collisionGroup]);
-   * rightBody.collides(collidesConfig[collisionGroup]);
-   */
 };
 
 PhysicsFactory.prototype._doesNotContain = function(collidesConfig, collisionGroup) {
@@ -295,7 +283,7 @@ PhysicsFactory.prototype._debugConfig = function(frameName, config) {
   console.log('');
 };
 
-PhysicsFactory.prototype.buildBodies = function(key, collides) {
+PhysicsFactory.prototype.buildBodies = function(key) {
   var self = this;
 
   if (!(key in self._playerConfig)) {
@@ -313,30 +301,22 @@ PhysicsFactory.prototype.buildBodies = function(key, collides) {
     var center = frameConfig.center,
         group = frameConfig.group;
     for (var gi = 0; gi < group.length; gi++) {
-      // console.log(JSON.stringify(group[gi]));
       var rightBody = self._getPhysicsBody(group[gi].imported, center),
           leftBody = self._getPhysicsBody(group[gi].flipped, center),
-          collisionGroup = group[gi].collisionGroup;
-
-      if (collisionGroup in self._collisionGroups) {
-        rightBody.setCollisionGroup(self._collisionGroups[collisionGroup]);
-        leftBody.setCollisionGroup(self._collisionGroups[collisionGroup]);
-        rightBody.collides(collidesConfig[collisionGroup]);
-        leftBody.collides(collidesConfig[collisionGroup]);
+          categoryBits = group[gi].categoryBits;
+      if (categoryBits in self._collisionGroups) {
+        rightBody.setCollisionGroup(self._collisionGroups[categoryBits]);
+        leftBody.setCollisionGroup(self._collisionGroups[categoryBits]);
+        rightBody.collides(collidesConfig[categoryBits]);
+        leftBody.collides(collidesConfig[categoryBits]);
       }
-
       bodies[frameName] = {
-        group: collisionGroup,
+        categoryBits: categoryBits,
         right: rightBody,
         left: leftBody
       };
     }
   }
-
-/* // this is how you change collision groups
- * self._worldBody.setCollisionGroup(playerCollisionGroup);
- * self._worldBody.collides([worldCollisionGroup]);
- */
 
   return bodies;
 };
