@@ -360,13 +360,30 @@ Player.prototype._enableBody = function(body, categoryBits) {
 
 Player.prototype._collisionCallback = function(body1, body2) {
   var self = this;
+  var maxZMargin = 7;
   if (body1.player._id === body2.player._id) return;
-  if (body1.categoryBits === 1 && body1.player._id === self._id)
-    if (body2.categoryBits === 2) self._setHit();
-  if (body2.categoryBits === 1 && body2.player._id === self._id)
-    if (body1.categoryBits === 2) self._setHit();
-  console.log('body1.player: ' + body1.player
-          + ', body2.player: ' + body2.player);
+  if (body1.categoryBits === 1 && body1.player._id === self._id) {
+    if (body2.categoryBits === 2) {
+      var zDiff = Math.abs(body1.player._shadow.y - body2.player._shadow.y);
+      //console.log('z difference: ' + zDiff);
+      if (zDiff <= maxZMargin) {
+        self._setHit();
+      }
+    }
+  }
+  if (body2.categoryBits === 1 && body2.player._id === self._id) {
+    if (body1.categoryBits === 2) {
+      var zDiff = Math.abs(body2.player._shadow.y - body1.player._shadow.y);
+      //console.log('z difference: ' + zDiff);
+      if (zDiff <= maxZMargin) {
+        self._setHit();
+      }
+    }
+  }
+
+
+  // console.log('body1.player: ' + body1.player
+  //         + ', body2.player: ' + body2.player);
 }
 
 Player.prototype._updateCollisionBody = function() {
