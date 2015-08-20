@@ -56,32 +56,26 @@ function Player(game, options) {
     'thug1-idle-2',
     'thug1-idle-1'
   ];
-
   var walk = [
     'thug1-walk-0',
     'thug1-walk-1',
     'thug1-walk-2',
     'thug1-walk-1'
   ];
-
   var punch = [
     'thug1-punch'
   ];
-
   var headbutt = [
     'thug1-headbutt-0',
     'thug1-headbutt-1',
     'thug1-headbutt-2'
   ];
-
   var hit = [
     'thug1-hit-0'
   ];
-
   var falling = [
     'thug1-hit-1'
   ];
-
   var recover = [
     'thug1-recover-0',
     'thug1-recover-1',
@@ -128,16 +122,20 @@ function Player(game, options) {
   self._collisionConfig = options.collisionConfig;
   self._collisionBodies = self._collisionConfig.bodies;
   Object.keys(self._collisionBodies).forEach(function(key) {
-    console.log('this will print');
     var leftBody = self._collisionBodies[key].left,
-        rightBody = self._collisionBodies[key].right;
+        rightBody = self._collisionBodies[key].right,
+        categoryBits = self._collisionBodies[key].categoryBits;
     leftBody.fixedRotation = true;
     rightBody.fixedRotation = true;
     game.physics.p2.addBody(leftBody);
     game.physics.p2.addBody(rightBody);
+    leftBody.player = self;
+    rightBody.player = self;
+    leftBody.categoryBits = categoryBits;
+    rightBody.categoryBits = categoryBits;
   });
   self._activeBody = self._collisionBodies[idle[0]].right;
-  self._activeBody.debug = true;
+  self._activeBody.debug = self._debug;
 
   // capsule can have same dimensions as shadow
   var radius = self._shadow.height/1.5;
@@ -356,11 +354,16 @@ Player.prototype._disableBody = function(body) {
 Player.prototype._enableBody = function(body, categoryBits) {
   var self = this;
   body.setCollisionGroup(self._collisionConfig.collisionGroups[categoryBits]);
-  body.collides(self._collisionConfig.collidesConfig[categoryBits], collisionCallback, this);
+  body.collides(self._collisionConfig.collidesConfig[categoryBits], self._collisionCallback, this);
 };
 
-function collisionCallback(body1, body2) {
-  console.log('now this is #PROGRESS');
+Player.prototype._collisionCallback = function(body1, body2) {
+  var self = this;
+  //console.log('body1.categoryBits: ' + body1.categoryBits + ', body2.categoryBits: ' + body2.categoryBits);
+  if ( (body1.categoryBits === 1 && body1.player._id === self._id) 
+    || (body2.categoryBits === 1 && body2.player._id === self._id)) {
+    self.hit(5);
+  }
 }
 
 Player.prototype._updateCollisionBody = function() {
@@ -377,7 +380,7 @@ Player.prototype._updateCollisionBody = function() {
       self._activeBody = (self._sprite.scale.x < 0) ?
         self._collisionBodies[frameName].left : self._collisionBodies[frameName].right;
       self._enableBody(self._activeBody, self._collisionBodies[frameName].categoryBits);
-      self._activeBody.debug = true; 
+      self._activeBody.debug = self._debug; 
     }
     self._lastFrame = frameName;
   } 
