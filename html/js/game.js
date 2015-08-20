@@ -313,17 +313,11 @@ Game.prototype._updateClient = function(time) {
 
   if (!self._chat.isSelected()) {
     var keystate = 0;
-    if (self._game.input.keyboard.isDown(Phaser.Keyboard.Q)) {
-      console.log('test disabling the client body');
-      self._client.testDisableBody();
-    }
     if (self._selectInputPressed()) {
       self._clearClientKeystate();
       self._chat.selectInput();
     } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
       self._client.punch();
-    } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.O)) {
-      self._client.hit(5);
     } else {
       if (self._client.canMove()) {
         if (self._leftPressed())  keystate |= Player.LEFT_PRESSED;

@@ -342,7 +342,7 @@ PhysicsFactory.prototype.getCollisionConfig = function(key) {
     throw new Error('Player key is not in PhysicsFactory: ' + key);
   }
   return {
-    bodies: self.buildBodies(key, true),
+    bodies: self.buildBodies(key, false),
     collidesConfig: self.getCollidesConfig(key),
     collisionGroups: self.getCollisionGroups()
   };

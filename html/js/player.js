@@ -125,14 +125,18 @@ function Player(game, options) {
     var leftBody = self._collisionBodies[key].left,
         rightBody = self._collisionBodies[key].right,
         categoryBits = self._collisionBodies[key].categoryBits;
-    leftBody.fixedRotation = true;
-    rightBody.fixedRotation = true;
-    game.physics.p2.addBody(leftBody);
-    game.physics.p2.addBody(rightBody);
+    // custom properties
     leftBody.player = self;
     rightBody.player = self;
     leftBody.categoryBits = categoryBits;
     rightBody.categoryBits = categoryBits;
+    // normal properties
+    leftBody.fixedRotation = true;
+    rightBody.fixedRotation = true;
+    leftBody.clearCollision();
+    rightBody.clearCollision();
+    game.physics.p2.addBody(leftBody);
+    game.physics.p2.addBody(rightBody);
   });
   self._activeBody = self._collisionBodies[idle[0]].right;
   self._activeBody.debug = self._debug;
@@ -162,8 +166,6 @@ function Player(game, options) {
   self._lastKeystate = self._keystate;
   self._lastState = self._state;
 }
-
-
 
 Player.prototype.cameraFollow = function(game) {
   var self = this;
@@ -284,7 +286,6 @@ Player.prototype.getState = function() {
 
 Player.prototype.setState = function(state) {
   var self = this;
-  // self.debugState(state);
 
   // set direction
   if (state & Player.FACING_LEFT) {
@@ -359,17 +360,18 @@ Player.prototype._enableBody = function(body, categoryBits) {
 
 Player.prototype._collisionCallback = function(body1, body2) {
   var self = this;
-  //console.log('body1.categoryBits: ' + body1.categoryBits + ', body2.categoryBits: ' + body2.categoryBits);
-  if ( (body1.categoryBits === 1 && body1.player._id === self._id) 
-    || (body2.categoryBits === 1 && body2.player._id === self._id)) {
-    self.hit(5);
-  }
+  if (body1.player._id === body2.player._id) return;
+  if (body1.categoryBits === 1 && body1.player._id === self._id)
+    if (body2.categoryBits === 2) self._setHit();
+  if (body2.categoryBits === 1 && body2.player._id === self._id)
+    if (body1.categoryBits === 2) self._setHit();
+  console.log('body1.player: ' + body1.player
+          + ', body2.player: ' + body2.player);
 }
 
 Player.prototype._updateCollisionBody = function() {
   var self = this;
 
-  // temporaryily here for testing
   var frameName = self._sprite.frameName;
   if (frameName !== self._lastFrame) {
     if (self._activeBody) {
