@@ -367,7 +367,7 @@ Player.prototype._collisionCallback = function(body1, body2) {
       var zDiff = Math.abs(body1.player._shadow.y - body2.player._shadow.y);
       //console.log('z difference: ' + zDiff);
       if (zDiff <= maxZMargin) {
-        self._setHit();
+        self.hit();
       }
     }
   }
@@ -376,7 +376,7 @@ Player.prototype._collisionCallback = function(body1, body2) {
       var zDiff = Math.abs(body2.player._shadow.y - body1.player._shadow.y);
       //console.log('z difference: ' + zDiff);
       if (zDiff <= maxZMargin) {
-        self._setHit();
+        self.hit();
       }
     }
   }
@@ -543,10 +543,11 @@ Player.prototype._setPunch = function() {
   self._setAnimation('punch', 1, false);
 };
 
-// FIXME
 Player.prototype.hit = function(damage) {
   var self = this;
+  console.log('hit()');
   if (self._state & Player.CAN_HIT) {
+    self._damage += 5; // FIXME
     if (self._damage < Player.MAX_DAMAGE) {
       self._setHit();
     } else {
@@ -557,7 +558,6 @@ Player.prototype.hit = function(damage) {
 
 Player.prototype._setHit = function() {
   var self = this;
-  self._damage += 5; // FIXME
   self._hitTime = new Date().getTime();
   self._state = Player.HIT;
   self._sprite.animations.play('hit', 1, false);
