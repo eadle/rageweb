@@ -41,7 +41,9 @@ function Player(game, options) {
   self._id = (typeof options.id === 'string') ? options.id : undefined;
   self._name = (typeof options.name === 'string') ? options.name : '???';
   self._debug = (typeof options.debug === 'boolean') ? options.debug : false;
+  self._isClient = (typeof options.isClient === 'boolean') ? options.isClient : false;
   var position = (typeof options.position === 'object') ? options.position : Player.START_POS;
+  console.log(self._name + ' is client? ' + self._isClient);
 
   self._damage  = 0;
   self._hitTime = 0;
@@ -367,19 +369,19 @@ Player.prototype._collisionCallback = function(body1, body2) {
   
   var maxZMargin = 7;
   if (body1.player._id === body2.player._id) return;
+
   if (body1.categoryBits === 1 && body1.player._id === self._id) {
-    if (body2.categoryBits === 2) {
+    if (body2.categoryBits === 2 && body1.player._isClient) {
       var zDiff = Math.abs(body1.player._shadow.y - body2.player._shadow.y);
-      //console.log('z difference: ' + zDiff);
       if (zDiff <= maxZMargin) {
         self.hit();
       }
     }
   }
+
   if (body2.categoryBits === 1 && body2.player._id === self._id) {
-    if (body1.categoryBits === 2) {
+    if (body1.categoryBits === 2 && body2.player._isClient) {
       var zDiff = Math.abs(body2.player._shadow.y - body1.player._shadow.y);
-      //console.log('z difference: ' + zDiff);
       if (zDiff <= maxZMargin) {
         self.hit();
       }

@@ -277,7 +277,8 @@ Game.prototype._addClient = function(client) {
     worldCollisionGroup: self._worldCollisionGroup,
     playerCollisionGroup: self._playerCollisionGroup,
     collisionConfig: self._physicsFactory.getCollisionConfig('thug'),
-    debug: Game.DEBUGGING
+    debug: Game.DEBUGGING,
+    isClient: true,
   });
   self._client.cameraFollow(self._game);
   self._chat.setName(client.name);
