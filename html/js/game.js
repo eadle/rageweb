@@ -4,7 +4,7 @@ Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.ASPECT = Game.WIDTH/Game.HEIGHT;
 Game.SERVER = 'ws://' + window.location.hostname + ':8188';
-Game.DEBUGGING = false;
+Game.DEBUGGING = true;
 
 function Game(options) {
   var self = this;
@@ -64,6 +64,7 @@ function Game(options) {
       // start physics system
       self._game.physics.startSystem(Phaser.Physics.P2JS);
       self._game.physics.p2.useElapsedTime = true;
+      self._game.physics.p2.setImpactEvents(true);
 
       // create collision groups
       self._game.physics.p2.updateBoundsCollisionGroup();
@@ -275,7 +276,7 @@ Game.prototype._addClient = function(client) {
     spriteGroup: self._playerSpriteGroup,
     worldCollisionGroup: self._worldCollisionGroup,
     playerCollisionGroup: self._playerCollisionGroup,
-    bodies: self._physicsFactory.buildBodies('thug'),
+    collisionConfig: self._physicsFactory.getCollisionConfig('thug'),
     debug: Game.DEBUGGING
   });
   self._client.cameraFollow(self._game);
@@ -293,7 +294,7 @@ Game.prototype._addPlayer = function(player) {
     spriteGroup: self._playerSpriteGroup,
     worldCollisionGroup: self._worldCollisionGroup,
     playerCollisionGroup: self._playerCollisionGroup,
-    bodies: self._physicsFactory.buildBodies('thug'),
+    collisionConfig: self._physicsFactory.getCollisionConfig('thug'),
     debug: Game.DEBUGGING
   });
   self._chat.appendSessionMessage('['+player.name+' joined]');
@@ -312,6 +313,10 @@ Game.prototype._updateClient = function(time) {
 
   if (!self._chat.isSelected()) {
     var keystate = 0;
+    if (self._game.input.keyboard.isDown(Phaser.Keyboard.Q)) {
+      console.log('test disabling the client body');
+      self._client.testDisableBody();
+    }
     if (self._selectInputPressed()) {
       self._clearClientKeystate();
       self._chat.selectInput();

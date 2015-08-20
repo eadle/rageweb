@@ -283,8 +283,23 @@ PhysicsFactory.prototype._debugConfig = function(frameName, config) {
   console.log('');
 };
 
-PhysicsFactory.prototype.buildBodies = function(key) {
+PhysicsFactory.prototype.getCollisionGroups = function() {
   var self = this;
+  return self._collisionGroups;
+};
+
+PhysicsFactory.prototype.getCollidesConfig = function(key) {
+  var self = this;
+  if (!(key in self._playerConfig)) {
+    throw new Error('Player key is not in PhysicsFactory: ' + key);
+  }
+  return self._collidesConfig[key];
+};
+
+PhysicsFactory.prototype.buildBodies = function(key, setCollisionGroups) {
+  var self = this;
+  setCollisionGroups = (typeof setCollisionGroups === 'boolean')
+    ? setCollisionGroups : false;
 
   if (!(key in self._playerConfig)) {
     throw new Error('Player key is not in PhysicsFactory: ' + key);
@@ -304,7 +319,7 @@ PhysicsFactory.prototype.buildBodies = function(key) {
       var rightBody = self._getPhysicsBody(group[gi].imported, center),
           leftBody = self._getPhysicsBody(group[gi].flipped, center),
           categoryBits = group[gi].categoryBits;
-      if (categoryBits in self._collisionGroups) {
+      if (setCollisionGroups && (categoryBits in self._collisionGroups)) {
         rightBody.setCollisionGroup(self._collisionGroups[categoryBits]);
         leftBody.setCollisionGroup(self._collisionGroups[categoryBits]);
         rightBody.collides(collidesConfig[categoryBits]);
@@ -319,4 +334,16 @@ PhysicsFactory.prototype.buildBodies = function(key) {
   }
 
   return bodies;
+};
+
+PhysicsFactory.prototype.getCollisionConfig = function(key) {
+  var self = this;
+  if (!(key in self._playerConfig)) {
+    throw new Error('Player key is not in PhysicsFactory: ' + key);
+  }
+  return {
+    bodies: self.buildBodies(key, true),
+    collidesConfig: self.getCollidesConfig(key),
+    collisionGroups: self.getCollisionGroups()
+  };
 };

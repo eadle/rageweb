@@ -36,11 +36,12 @@ function Player(game, options) {
     throw new Error('Player expects valid game context');
     return null;
   }
+  self._game = game;
 
   self._id = (typeof options.id === 'string') ? options.id : undefined;
   self._name = (typeof options.name === 'string') ? options.name : '???';
-  var position = (typeof options.position === 'object') ? options.position : Player.START_POS;
   self._debug = (typeof options.debug === 'boolean') ? options.debug : false;
+  var position = (typeof options.position === 'object') ? options.position : Player.START_POS;
 
   self._damage  = 0;
   self._hitTime = 0;
@@ -124,7 +125,17 @@ function Player(game, options) {
   }
 
   // setup collision bodies
-  self._collisionBodies = options.bodies;
+  self._collisionConfig = options.collisionConfig;
+  self._collisionBodies = self._collisionConfig.bodies;
+  Object.keys(self._collisionBodies).forEach(function(key) {
+    console.log('this will print');
+    var leftBody = self._collisionBodies[key].left,
+        rightBody = self._collisionBodies[key].right;
+    leftBody.fixedRotation = true;
+    rightBody.fixedRotation = true;
+    game.physics.p2.addBody(leftBody);
+    game.physics.p2.addBody(rightBody);
+  });
   self._activeBody = self._collisionBodies[idle[0]].right;
   self._activeBody.debug = true;
 
@@ -136,7 +147,6 @@ function Player(game, options) {
   self._worldBody.debug = self._debug;
   game.physics.p2.addBody(self._worldBody);
 
-  // FIXME make this a function -- setCollisionGroups or something
   if (typeof options.worldCollisionGroup === 'object' && typeof options.playerCollisionGroup === 'object') {
     var worldCollisionGroup = options.worldCollisionGroup;
     var playerCollisionGroup = options.playerCollisionGroup;
@@ -154,6 +164,8 @@ function Player(game, options) {
   self._lastKeystate = self._keystate;
   self._lastState = self._state;
 }
+
+
 
 Player.prototype.cameraFollow = function(game) {
   var self = this;
@@ -274,7 +286,6 @@ Player.prototype.getState = function() {
 
 Player.prototype.setState = function(state) {
   var self = this;
-
   // self.debugState(state);
 
   // set direction
@@ -337,6 +348,21 @@ Player.prototype._updateSprites = function() {
 
 };
 
+Player.prototype._disableBody = function(body) {
+  var self = this;
+  body.clearCollision();
+};
+
+Player.prototype._enableBody = function(body, categoryBits) {
+  var self = this;
+  body.setCollisionGroup(self._collisionConfig.collisionGroups[categoryBits]);
+  body.collides(self._collisionConfig.collidesConfig[categoryBits], collisionCallback, this);
+};
+
+function collisionCallback(body1, body2) {
+  console.log('now this is #PROGRESS');
+}
+
 Player.prototype._updateCollisionBody = function() {
   var self = this;
 
@@ -344,11 +370,13 @@ Player.prototype._updateCollisionBody = function() {
   var frameName = self._sprite.frameName;
   if (frameName !== self._lastFrame) {
     if (self._activeBody) {
+      self._disableBody(self._activeBody);
       self._activeBody.debug = false; 
     }
     if (frameName in self._collisionBodies) {
       self._activeBody = (self._sprite.scale.x < 0) ?
         self._collisionBodies[frameName].left : self._collisionBodies[frameName].right;
+      self._enableBody(self._activeBody, self._collisionBodies[frameName].categoryBits);
       self._activeBody.debug = true; 
     }
     self._lastFrame = frameName;
