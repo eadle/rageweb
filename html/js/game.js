@@ -294,7 +294,11 @@ Game.prototype._addPlayer = function(player) {
     spriteGroup: self._playerSpriteGroup,
     worldCollisionGroup: self._worldCollisionGroup,
     playerCollisionGroup: self._playerCollisionGroup,
-    collisionConfig: self._physicsFactory.getCollisionConfig('thug'),
+    collisionConfig: {
+      bodies: self._physicsFactory.buildBodies('thug', false, {categoryBits: [2]}),
+      collides: self._physicsFactory.getCollidesConfig('thug'),
+      collisionGroups: self._physicsFactory.getCollisionGroups()
+    },
     debug: Game.DEBUGGING
   });
   self._chat.appendSessionMessage('['+player.name+' joined]');

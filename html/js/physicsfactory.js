@@ -141,7 +141,7 @@ PhysicsFactory.prototype._addCollidesConfig = function(key, collides) {
       }
     }
   }
-  console.log('collidesConfig[' + key + ']: ' + JSON.stringify(self._collidesConfig[key]));
+  // console.log('collidesConfig[' + key + ']: ' + JSON.stringify(self._collidesConfig[key]));
 
 };
 
@@ -296,10 +296,13 @@ PhysicsFactory.prototype.getCollidesConfig = function(key) {
   return self._collidesConfig[key];
 };
 
-PhysicsFactory.prototype.buildBodies = function(key, setCollisionGroups) {
+PhysicsFactory.prototype.buildBodies = function(key, setCollisionGroups, options) {
   var self = this;
   setCollisionGroups = (typeof setCollisionGroups === 'boolean')
     ? setCollisionGroups : false;
+
+  options = options || {};
+  var useCategoryBits = options.categoryBits || [];
 
   if (!(key in self._playerConfig)) {
     throw new Error('Player key is not in PhysicsFactory: ' + key);
@@ -319,6 +322,16 @@ PhysicsFactory.prototype.buildBodies = function(key, setCollisionGroups) {
       var rightBody = self._getPhysicsBody(group[gi].imported, center),
           leftBody = self._getPhysicsBody(group[gi].flipped, center),
           categoryBits = group[gi].categoryBits;
+      if (useCategoryBits.length) {
+        var useThisBody = false;
+        for (var ii = 0; ii < useCategoryBits.length; ii++) {
+          if (categoryBits === useCategoryBits[ii]) {
+            useThisBody = true;
+            break;
+          }
+          if (!useThisBody) continue;
+        }
+      }
       if (setCollisionGroups && (categoryBits in self._collisionGroups)) {
         rightBody.setCollisionGroup(self._collisionGroups[categoryBits]);
         leftBody.setCollisionGroup(self._collisionGroups[categoryBits]);
@@ -343,7 +356,7 @@ PhysicsFactory.prototype.getCollisionConfig = function(key) {
   }
   return {
     bodies: self.buildBodies(key, false),
-    collidesConfig: self.getCollidesConfig(key),
+    collides: self.getCollidesConfig(key),
     collisionGroups: self.getCollisionGroups()
   };
 };

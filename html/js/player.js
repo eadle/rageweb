@@ -355,11 +355,16 @@ Player.prototype._disableBody = function(body) {
 Player.prototype._enableBody = function(body, categoryBits) {
   var self = this;
   body.setCollisionGroup(self._collisionConfig.collisionGroups[categoryBits]);
-  body.collides(self._collisionConfig.collidesConfig[categoryBits], self._collisionCallback, this);
+  body.collides(self._collisionConfig.collides[categoryBits], self._collisionCallback, this);
 };
 
+/*
+ * Enemies should only have attack collison shapes.
+ * Client should only have hitbox collision shapes.
+ */
 Player.prototype._collisionCallback = function(body1, body2) {
   var self = this;
+  
   var maxZMargin = 7;
   if (body1.player._id === body2.player._id) return;
   if (body1.categoryBits === 1 && body1.player._id === self._id) {
@@ -545,7 +550,6 @@ Player.prototype._setPunch = function() {
 
 Player.prototype.hit = function(damage) {
   var self = this;
-  console.log('hit()');
   if (self._state & Player.CAN_HIT) {
     self._damage += 5; // FIXME
     if (self._damage < Player.MAX_DAMAGE) {
