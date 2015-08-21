@@ -26,12 +26,25 @@ function Chat(parentId) {
 Chat.prototype.resize = function(canvasHeight) {
   var self = this;
 
+
+  var wrapperWidth = self._wrapper.offsetWidth;
+  if (wrapperWidth <= Game.WIDTH) {
+    var size = '8px';
+    self._log.style.fontSize = size;
+  } else if (wrapperWidth < 2*Game.WIDTH) {
+    var size = '9px';
+    self._log.style.fontSize = size;
+  } else {
+    var size = '10px';
+    self._log.style.fontSize = size;
+  }   
+
   // get total window height
   var totalHeight = self._wrapper.offsetHeight;
   // get sum of all elements but chat-log
   var handleHeight = self._handle.clientHeight,
       inputHeight = self._input.clientHeight;
-  var logHeight = totalHeight - handleHeight - inputHeight - canvasHeight - 5;
+  var logHeight = totalHeight - handleHeight - inputHeight - canvasHeight - 7;
   if (logHeight < 0) {
     logHeight = 0;
   }
@@ -40,6 +53,12 @@ Chat.prototype.resize = function(canvasHeight) {
   // scroll to bottom? 
   self._scrollOrRoll();
 };
+
+Chat.prototype.setFontSize = function(size) {
+  var self = this;
+  self._log.style.fontSize = size;
+};
+
 
 Chat.prototype.setName = function(name) {
   var self = this;

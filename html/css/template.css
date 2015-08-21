@@ -39,9 +39,22 @@ body {
   top: 0;
 }
 
-#chat-handle {
+#chat-header {
   font-size: 20px;
-  padding-top: 5px;
+}
+
+#chat-handle {
+  display: inline-block;
+  position: relative;
+  top: 2px;
+  left: 2px;
+  vertical-align: middle;
+}
+
+#volume {
+  position: relative;
+  top: 2px;
+  cursor: pointer;
 }
 
 #chat-input {
