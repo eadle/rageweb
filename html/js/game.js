@@ -13,16 +13,17 @@ function Game(options) {
   self._ws = null;
   self._chat = null;
   self._canvasElement = null;
-
   self._cursors = null;
+
   self._client = null;
   self._players = {};
+  self._playerFactory = undefined;
   self._playerSpriteGroup = null;
 
   self._map = null;
   self._layers = [];
-  self._worldCollision = null;
-  self._physicsFactory = null;
+  self._worldCollisionObjects = null;
+
   self._worldCollisionGroup  = null;
   self._playerCollisionGroup = null;
   self._hitboxCollisionGroup = null;
@@ -39,8 +40,9 @@ function Game(options) {
       self._game.stage.disableVisibilityChange = true;
       // load assets
       self._game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
-      self._game.load.atlas('thug-atlas', 'assets/images/thug1.png', 'assets/atlases/thug1.json');
-      self._game.load.physics('thug-physics', 'assets/physics/thug1-physics.json');
+      self._game.load.atlas('vice-atlas', 'assets/vice.png', 'assets/vice-atlas.json');
+      self._game.load.physics('vice-physics', 'assets/vice-physics.json');
+      self._game.load.image('shadow', 'assets/shadow.png');
       self._game.load.tilemap('subway-map', 'assets/maps/subway32.json',null, Phaser.Tilemap.TILED_JSON);
       self._game.load.image('subway', 'assets/images/subway32.png');
       // UI callbacks
@@ -65,31 +67,36 @@ function Game(options) {
       self._game.physics.startSystem(Phaser.Physics.P2JS);
       self._game.physics.p2.useElapsedTime = true;
       self._game.physics.p2.setImpactEvents(true);
+      self._game.physics.p2.updateBoundsCollisionGroup();
 
       // create collision groups
-      self._game.physics.p2.updateBoundsCollisionGroup();
       self._worldCollisionGroup  = self._game.physics.p2.createCollisionGroup();
       self._playerCollisionGroup = self._game.physics.p2.createCollisionGroup();
       self._hitboxCollisionGroup = self._game.physics.p2.createCollisionGroup();
       self._attackCollisionGroup = self._game.physics.p2.createCollisionGroup();
 
-      // setup physics factory
-      var physicsFactoryGroups = [];
-      physicsFactoryGroups.push({categoryBits: 1, group: self._hitboxCollisionGroup});
-      physicsFactoryGroups.push({categoryBits: 2, group: self._attackCollisionGroup});
-      self._physicsFactory = new PhysicsFactory(self._game, {groups: physicsFactoryGroups});
-      self._physicsFactory.addKey('thug', 'thug-atlas', 'thug-physics', {collides: [[1,2], [2,2]]});
+      // create player sprite group
+      self._playerSpriteGroup = self._game.add.group();
+
+      // initialize player factory
+      self._playerFactory = new PlayerFactory(self._game, {
+        playerSpriteGroup: self._playerSpriteGroup,
+        worldCollisionGroup: self._worldCollisionGroup,
+        playerCollisionGroup: self._playerCollisionGroup,
+        hitboxCollisionGroup: self._hitboxCollisionGroup,
+        attackCollisionGroup: self._attackCollisionGroup,
+        debug: true
+      });
 
       // add collision layer to physics world
-      self._worldCollision = self._game.physics.p2.convertCollisionObjects(self._map, 'collision');
-      for (var ii = 0; ii < self._worldCollision.length; ii++) {
-        self._worldCollision[ii].debug = Game.DEBUGGING;
-        self._worldCollision[ii].setCollisionGroup(self._worldCollisionGroup);
-        self._worldCollision[ii].collides([self._playerCollisionGroup]);
+      self._worldCollisionObjects = self._game.physics.p2.convertCollisionObjects(self._map, 'collision');
+      for (var ii = 0; ii < self._worldCollisionObjects.length; ii++) {
+        self._worldCollisionObjects[ii].debug = Game.DEBUGGING;
+        self._worldCollisionObjects[ii].setCollisionGroup(self._worldCollisionGroup);
+        self._worldCollisionObjects[ii].collides([self._playerCollisionGroup]);
       }   
 
-      // player sprite group and cursor input
-      self._playerSpriteGroup = self._game.add.group();
+      // using cursor input
       self._cursors = self._game.input.keyboard.createCursorKeys();
 
       // resize chat
@@ -267,19 +274,16 @@ Game.prototype._applyStateChange = function(pid, position, state) {
 
 Game.prototype._addClient = function(client) {
   var self = this;
-  self._client = new Player(self._game, {
+
+  self._client = self._playerFactory.createPlayer({
+    type: 'vice',
     id: client.id,
+    isClient: true,
     name: client.name,
     textFill: '#00FF00',
-    state: Player.IDLE,
-    position: Player.START_POS,
-    spriteGroup: self._playerSpriteGroup,
-    worldCollisionGroup: self._worldCollisionGroup,
-    playerCollisionGroup: self._playerCollisionGroup,
-    collisionConfig: self._physicsFactory.getCollisionConfig('thug'),
-    debug: Game.DEBUGGING,
-    isClient: true,
+    position: Player.START_POS
   });
+
   self._client.cameraFollow(self._game);
   self._chat.setName(client.name);
   self._broadcastClientState();
@@ -287,22 +291,18 @@ Game.prototype._addClient = function(client) {
 
 Game.prototype._addPlayer = function(player) {
   var self = this;
-  self._players[player.id] = new Player(self._game, {
+  
+  self._players[player.id] = self._playerFactory.createPlayer({
+    type: 'vice',
     id: player.id,
     name: player.name,
     state: player.state,
-    position: player.position,
-    spriteGroup: self._playerSpriteGroup,
-    worldCollisionGroup: self._worldCollisionGroup,
-    playerCollisionGroup: self._playerCollisionGroup,
-    collisionConfig: {
-      bodies: self._physicsFactory.buildBodies('thug', false, {categoryBits: [2]}),
-      collides: self._physicsFactory.getCollidesConfig('thug'),
-      collisionGroups: self._physicsFactory.getCollisionGroups()
-    },
-    debug: Game.DEBUGGING
+    position: player.position
   });
-  self._chat.appendSessionMessage('['+player.name+' joined]');
+
+  if (self._players[player.id].hasName()) {
+    self._chat.appendSessionMessage('['+player.name+' joined]');
+  }
 };
 
 Game.prototype._updatePlayers = function(time) {
@@ -322,7 +322,7 @@ Game.prototype._updateClient = function(time) {
       self._clearClientKeystate();
       self._chat.selectInput();
     } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
-      self._client.punch();
+      self._client._punch();
     } else {
       if (self._client.canMove()) {
         if (self._leftPressed())  keystate |= Player.LEFT_PRESSED;
@@ -335,7 +335,7 @@ Game.prototype._updateClient = function(time) {
   }
 
   self._client.update(time);
-  if (self._client.changed()) {
+  if (self._client.needsBroadcast()) {
     self._broadcastClientState();
   }
 

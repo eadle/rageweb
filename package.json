@@ -1,10 +1,10 @@
 {
-  "name": "skellyweb",
+  "name": "rageweb",
   "version": "0.0.0",
-  "description": "networked brawler prototype",
+  "description": "Networked brawler prototype",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: git gud\" && exit 1"
   },
   "author": "Ed Markowski <siphon@protonmail.com>",
   "license": "GPL 3.0",

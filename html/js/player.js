@@ -1,127 +1,78 @@
 'use strict';
 
-// player key states
-Player.LEFT_PRESSED  = 1;
-Player.RIGHT_PRESSED = 1 << 1;
-Player.UP_PRESSED    = 1 << 2;
-Player.DOWN_PRESSED  = 1 << 3;
-// player game states
-Player.IDLE     = 1 << 4;
-Player.WALK     = 1 << 5;
-Player.JUMP     = 1 << 6
-Player.PUNCH    = 1 << 7;
-Player.HEADBUTT = 1 << 8;
-Player.HIT      = 1 << 9;
-Player.FALL     = 1 << 10
-Player.RECOVER  = 1 << 11;
-// bit masks
-Player.KEYSTATE_MASK = 0x0F;
-Player.STATE_MASK = 0xFF0;
+// maximum 256 player states
+Player.STATE_MASK = 0x00FF; // 1111 1111
+// movement encoding
+Player.LEFT_PRESSED  = 1 << 8;  // 0001 XXXX XXXX 
+Player.RIGHT_PRESSED = 1 << 9;  // 0010 XXXX XXXX 
+Player.UP_PRESSED    = 1 << 10; // 0100 XXXX XXXX 
+Player.DOWN_PRESSED  = 1 << 11; // 1000 XXXX XXXX
+Player.KEYSTATE_MASK = 0x0F00;
+// direction encoding
 Player.FACING_LEFT = 1 << 12;
 // other shared attributes
-Player.MAX_SPEED  = 180;
-Player.MAX_DAMAGE = 15;
-Player.HIT_TIME   = 200; // ms
-Player.PUNCH_TIME = 50; // ms
-Player.CAN_MOVE   = Player.IDLE | Player.WALK;
-Player.CAN_HIT    = ~(Player.HIT | Player.FALL | Player.RECOVER);
-Player.CAN_PUNCH  = Player.CAN_HIT;
-Player.START_POS  = {x: 256, y: 220}; // temp
+Player.MAX_SPEED = 180;
+Player.START_POS = {x: 256, y: 220}; // temp
 
 function Player(game, options) {
   var self = this;
   options = options || {};
 
+  // must specify game context
   if (typeof game !== 'object') {
-    throw new Error('Player expects valid game context');
-    return null;
+    throw new Error('Player expects valid game context: ' + game);
   }
   self._game = game;
 
-  self._id = (typeof options.id === 'string') ? options.id : undefined;
-  self._name = (typeof options.name === 'string') ? options.name : '???';
-  self._debug = (typeof options.debug === 'boolean') ? options.debug : false;
+  // must specify player id
+  if (typeof options.id !== 'string') {
+    throw new Error('Player expects valid id string: ' + options.id);
+  }
+  self._id = options.id;
+
+  // must specify player position
+  if (typeof options.position !== 'object') {
+    throw new Error('Player expects valid starting position: ' + options.position);
+  }
+  var position = options.position;
+
+  // other options
   self._isClient = (typeof options.isClient === 'boolean') ? options.isClient : false;
-  var position = (typeof options.position === 'object') ? options.position : Player.START_POS;
-  console.log(self._name + ' is client? ' + self._isClient);
+  self._debug = (typeof options.debug === 'boolean') ? options.debug : false;
+  self._name = (typeof options.name === 'string') ? options.name : null;
 
-  self._damage  = 0;
-  self._hitTime = 0;
-  self._yAtHit  = 0;
-  self._punchTime = 0;
-  self._animation = null;
+  // player name
+  self._text = null;
+  if (self.hasName()) {
+    self._textYOffset = (typeof options.textOffset === 'number') ? options.textOffset : -88;
+    self._text = new Phaser.Text(game, position.x, position.y + self._textYOffset, self._name);
+    self._text.anchor.setTo(0.5, 0.0);
+    self._text.font = 'Press Start 2P';
+    self._text.fontWeight = 'normal';
+    self._text.smoothed = false;
+    self._text.fontSize = '8px';
+    self._text.fill = (typeof options.textFill === 'string') ? options.textFill : '#FF0000';
+    self._text.stroke = '#000000';
+    self._text.strokeThickness = 2;
+  }
 
-  // FIXME Player should be base class
-  var idle = [
-    'thug1-idle-0',
-    'thug1-idle-1',
-    'thug1-idle-2',
-    'thug1-idle-1'
-  ];
-  var walk = [
-    'thug1-walk-0',
-    'thug1-walk-1',
-    'thug1-walk-2',
-    'thug1-walk-1'
-  ];
-  var punch = [
-    'thug1-punch'
-  ];
-  var headbutt = [
-    'thug1-headbutt-0',
-    'thug1-headbutt-1',
-    'thug1-headbutt-2'
-  ];
-  var hit = [
-    'thug1-hit-0'
-  ];
-  var falling = [
-    'thug1-hit-1'
-  ];
-  var recover = [
-    'thug1-recover-0',
-    'thug1-recover-1',
-    'thug1-recover-2'
-  ];
-
-  // player name should be above sprite
-  self._textYOffset = -88;
-  self._text = new Phaser.Text(game, position.x, position.y + self._textYOffset, self._name);
-  self._text.smoothed = false;
-  self._text.font = 'Press Start 2P';
-  self._text.fontSize = '8px';
-  self._text.fontWeight = 'normal';
-  self._text.fill = (typeof options.textFill === 'string') ? options.textFill : '#FF0000';
-  self._text.stroke = '#000000';
-  self._text.strokeThickness = 2;
-  self._text.anchor.setTo(0.5, 0.0);
-  // shadow only used when falling
-  self._shadow = new Phaser.Sprite(game, position.x, position.y, 'thug-atlas', 'thug1-shadow');
+  // player shadow
+  self._shadow = self._game.add.sprite(position.x, position.y, 'shadow');
   self._shadow.anchor.setTo(0.5, 1.0);
   self._shadow.visible = false;
   self._shadow.smoothed = false;
-  // player sprite and animations
-  self._lastFrame = idle[0];
-  self._sprite = new Phaser.Sprite(game, position.x, position.y, 'thug-atlas', self._lastFrame);
-  self._sprite.animations.add('idle', idle);
-  self._sprite.animations.add('walk', walk);
-  self._sprite.animations.add('punch', punch);
-  self._sprite.animations.add('headbutt', headbutt);
-  self._sprite.animations.add('hit', hit);
-  self._sprite.animations.add('falling', falling);
-  self._sprite.animations.add('recover', recover);
-  self._sprite.anchor.setTo(0.5, 1.0);
-  self._sprite.smoothed = false;
-  // add graphics to sprite group
-  if (typeof options.spriteGroup === 'object') {
-    var spriteGroup = options.spriteGroup;
-    spriteGroup.add(self._text);
-    spriteGroup.add(self._shadow);
-    spriteGroup.add(self._sprite);
+
+  // add the sprites to sprite group for z-sorting
+  if (typeof options.playerSpriteGroup === 'object') {
+    var group = options.playerSpriteGroup;
+    group.add(self._shadow);
+    if (self._text) {
+      group.add(self._text);
+    }
   }
 
-  // setup collision bodies
-  self._collisionConfig = options.collisionConfig;
+  // player collision bodies
+  self._collisionConfig = options.collisionConfig; // FIXME
   self._collisionBodies = self._collisionConfig.bodies;
   Object.keys(self._collisionBodies).forEach(function(key) {
     var leftBody = self._collisionBodies[key].left,
@@ -140,8 +91,7 @@ function Player(game, options) {
     game.physics.p2.addBody(leftBody);
     game.physics.p2.addBody(rightBody);
   });
-  self._activeBody = self._collisionBodies[idle[0]].right;
-  self._activeBody.debug = self._debug;
+  self._activeBody = null;
 
   // capsule can have same dimensions as shadow
   var radius = self._shadow.height/1.5;
@@ -151,22 +101,24 @@ function Player(game, options) {
   self._worldBody.debug = self._debug;
   game.physics.p2.addBody(self._worldBody);
 
-  if (typeof options.worldCollisionGroup === 'object' && typeof options.playerCollisionGroup === 'object') {
-    var worldCollisionGroup = options.worldCollisionGroup;
-    var playerCollisionGroup = options.playerCollisionGroup;
-    self._worldBody.setCollisionGroup(playerCollisionGroup);
-    self._worldBody.collides([worldCollisionGroup]);
-  }
+  var worldCollisionGroup = options.worldCollisionGroup;   // FIXME
+  var playerCollisionGroup = options.playerCollisionGroup; // FIXME
+  self._worldBody.setCollisionGroup(playerCollisionGroup);
+  self._worldBody.collides([worldCollisionGroup]);
 
+  // player states
   self._state = 0;
   self._keystate = 0;
   self._direction = 0;
-  if (typeof options.state === 'number') {
-    self.setState(options.state);
-  }
-  self._lastDirection = self._direction;
-  self._lastKeystate = self._keystate;
   self._lastState = self._state;
+  self._lastKeystate = self._keystate;
+  self._lastDirection = self._direction;
+
+  // state helper variables
+  self._stateStartTime = new Date().getTime();
+  self._stateStartPosition = position;
+  self._currentAnimation = null;
+
 }
 
 Player.prototype.cameraFollow = function(game) {
@@ -181,12 +133,22 @@ Player.prototype.cameraFollow = function(game) {
 Player.prototype.destroy = function() {
   var self = this;
 
-  self._worldBody.destroy();
-  self._shadow.destroy();
-  self._sprite.destroy();
-  self._text.destroy();
+  if (self._sprite) {
+    self._sprite.destroy();
+    self._sprite = null;
+  }
 
-  // destroy collision bodies
+  if (self._shadow) {
+    self._shadow.destroy();
+    self._shadow = null;
+  }
+
+  if (self._text) {
+    self._text.destroy();
+    self._text = null;
+  }
+
+  self._worldBody.destroy();
   Object.keys(self._collisionBodies).forEach(function(key) {
     self._collisionBodies[key].right.destroy();
     self._collisionBodies[key].left.destroy();
@@ -199,12 +161,12 @@ Player.prototype.getName = function() {
   return this._name;
 };
 
-Player.prototype.getPosition = function() {
-  return {x: this._worldBody.x, y: this._worldBody.y};
+Player.prototype.hasName = function() {
+  return (typeof this._name === 'string');
 };
 
-Player.prototype.getKeystate = function() {
-  return this._keystate;
+Player.prototype.getPosition = function() {
+  return {x: this._worldBody.x, y: this._worldBody.y};
 };
 
 Player.prototype.setPosition = function(position) {
@@ -241,44 +203,36 @@ Player.prototype.changedState = function() {
   return false;
 };
 
-Player.prototype.changed = function() {
+Player.prototype.needsBroadcast = function() {
   var self = this;
   return self.changedState() || self.changedKeystate() || self.changedDirection();
 };
 
-Player.prototype.debugState = function(state) {
+Player.prototype._faceLeft = function() {
   var self = this;
-
-  var s = '';
-  switch (state & Player.STATE_MASK) {
-    case Player.IDLE:    s = 'idling';     break;
-    case Player.WALK:    s = 'walking';    break;
-    case Player.PUNCH:   s = 'punching';   break; 
-    case Player.HIT:     s = 'being hit';  break;
-    case Player.FALL:    s = 'falling';    break;
-    case Player.RECOVER: s = 'recovering'; break;
-    default: s = 'unknown'; break;
-  }
-
-  var keystate = '';
-  if (state & Player.LEFT_PRESSED) keystate  += '<';
-  if (state & Player.RIGHT_PRESSED) keystate += '>';
-  if (state & Player.UP_PRESSED) keystate    += '^';
-  if (state & Player.DOWN_PRESSED) keystate  += 'v';
-
-  var direction = '';
-  if (state & Player.FACING_LEFT) {
-    direction = 'left';
-  } else {
-    direction = 'right';
-  }
-
-  console.log(self._name + ': state=' + s + ', keystate=' + keystate + ', direction=' + direction);
-
+  self._direction = Player.FACING_LEFT;
+  this._sprite.scale.x = -1.0;
 };
 
-Player.prototype.canMove = function() {
-  return this._state & Player.CAN_MOVE;
+Player.prototype._faceRight = function() {
+  var self = this;
+  self._direction = 0;
+  self._sprite.scale.x = 1.0;
+};
+
+Player.prototype.getKeystate = function() {
+  return this._keystate;
+};
+
+Player.prototype.setKeystate = function(keystate) {
+  var self = this;
+  // only set keystate if it changed
+  if (keystate !== self._keystate) {
+    self._keystate = keystate;
+    if (self.canMove()) {
+      self._setNextState();
+    }
+  };
 };
 
 Player.prototype.getState = function() {
@@ -289,63 +243,16 @@ Player.prototype.getState = function() {
 Player.prototype.setState = function(state) {
   var self = this;
 
-  // set direction
+  // face the proper direction
   if (state & Player.FACING_LEFT) {
     self._faceLeft();
   } else {
     self._faceRight();
   }
-  // set player state
-  switch (state & Player.STATE_MASK) {
-    case Player.IDLE:    self._setIdle(); break;
-    case Player.WALK:    self._setWalk(); break;
-    case Player.PUNCH:   self.punch();    break; 
-    case Player.HIT:     self._setHit();  break;
-    case Player.FALL:    self._setFall(); break;
-    case Player.RECOVER: self._setRecover(); break;
-    default: console.log('unknown state: ' + (state & Player.STATE_MASK)); break;
-  }
-  // set keystate
+  // set the actual player state
+  self._setState(state & Player.STATE_MASK);
+  // set the keystate
   self.setKeystate(state & Player.KEYSTATE_MASK);
-};
-
-Player.prototype.setKeystate = function(keystate) {
-  var self = this;
-  // only set keystate if it changed
-  if (keystate !== self._keystate) {
-    self._keystate = keystate;
-    if (self._state & Player.CAN_MOVE) {
-      self._setNextState();
-    }
-  };
-};
-
-Player.prototype._updateSprites = function() {
-  var self = this;
-
-  // lock shadow to body
-  self._shadow.x = self._worldBody.x;
-  self._shadow.y = self._worldBody.y + self._yOffset;
-  self._shadow.z = self._shadow.y;
-
-  // lock sprite to body
-  self._sprite.x = self._worldBody.x;
-  if (self._state !== Player.FALL) {
-    self._sprite.y = self._shadow.y;
-  }
-  self._sprite.z = self._shadow.z;
-
-  // lock text to body
-  self._text.x = self._worldBody.x - 1;
-  self._text.y = self._sprite.y + self._textYOffset - 1;
-  self._text.z = self._sprite.z;
-
-  // if debugging physics body
-  if (self._debug) {
-    self._worldBody.debugBody.x = self._worldBody.x;
-    self._worldBody.debugBody.y = self._worldBody.y;
-    self._worldBody.debugBody.rotation = self._worldBody.rotation;
-  }
 
 };
 
@@ -360,10 +267,7 @@ Player.prototype._enableBody = function(body, categoryBits) {
   body.collides(self._collisionConfig.collides[categoryBits], self._collisionCallback, this);
 };
 
-/*
- * Enemies should only have attack collison shapes.
- * Client should only have hitbox collision shapes.
- */
+// FIXME -- this is a fucking mess
 Player.prototype._collisionCallback = function(body1, body2) {
   var self = this;
   
@@ -374,7 +278,7 @@ Player.prototype._collisionCallback = function(body1, body2) {
     if (body2.categoryBits === 2 && body1.player._isClient) {
       var zDiff = Math.abs(body1.player._shadow.y - body2.player._shadow.y);
       if (zDiff <= maxZMargin) {
-        self.hit();
+        self._damage();
       }
     }
   }
@@ -383,14 +287,11 @@ Player.prototype._collisionCallback = function(body1, body2) {
     if (body1.categoryBits === 2 && body2.player._isClient) {
       var zDiff = Math.abs(body2.player._shadow.y - body1.player._shadow.y);
       if (zDiff <= maxZMargin) {
-        self.hit();
+        self._damage();
       }
     }
   }
 
-
-  // console.log('body1.player: ' + body1.player
-  //         + ', body2.player: ' + body2.player);
 }
 
 Player.prototype._updateCollisionBody = function() {
@@ -435,122 +336,178 @@ Player.prototype._forceProperSpriteRendering = function() {
   self._sprite.y = Math.round(self._sprite.y) + spriteYOffset;
 };
 
-Player.prototype.update = function(time) {
+Player.prototype._updateSprites = function() {
   var self = this;
 
-  // clear velocity
-  self._worldBody.velocity.x = 0;
-  self._worldBody.velocity.y = 0;
+  // lock shadow to body
+  self._shadow.x = self._worldBody.x;
+  self._shadow.y = self._worldBody.y + self._yOffset;
+  self._shadow.z = self._shadow.y;
 
-  switch (self._state) {
-    case Player.WALK:
-      var dx = Player.MAX_SPEED,
-          dy = Player.MAX_SPEED/2;
-      if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
-      if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
-      if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
-      if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
-      break;
-    case Player.HIT:
-      var dt = time - self._hitTime;
-      // console.log('time=' + time + ', hittime= ' + self._hitTime + ', dt=' + dt);
-      if (dt >= Player.HIT_TIME) {
-        self._setNextState();
-      }
-      break;
-    case Player.FALL:
-      var t = (time - self._hitTime)/1000,
-          v0y = -200,
-          g = 500;
-      self._sprite.y = self._yAtHit + v0y*t + 0.5*g*t*t;
-      self._sprite.z = self._shadow.y;
-      // if falling animation has completed
-      if (self._sprite.y > self._yAtHit && t > 0) {
-        // start recovering
-        self._sprite.y = self._yAtHit;
-        self._setRecover();
-      }
-      break;
-    case Player.RECOVER:
-      if (!self._animation.isPlaying) {
-        self._setNextState();
-      }
-      break;
-    case Player.PUNCH:
-      var dt = time  - self._punchTime;
-      if (dt >= Player.PUNCH_TIME) {
-        self._setNextState();
-      }
-      break;
-    case Player.HEADBUTT:
-      console.log('WARN: headbutting not implemented');
-      break;
-    case Player.JUMP:
-      console.log('WARN: jumping not implemented');
-      break;
-    default:
-  };
+  // lock sprite to body
+  self._sprite.x = self._worldBody.x;
+  if (self._state !== Player.FALL) {
+    self._sprite.y = self._shadow.y;
+  }
+  self._sprite.z = self._shadow.z;
 
+  // lock text to body
+  if (self._text) {
+    self._text.x = self._worldBody.x - 1;
+    self._text.y = self._sprite.y + self._textYOffset - 1;
+    self._text.z = self._sprite.z;
+  }
+
+  // if debugging physics body
+  if (self._debug) {
+    self._worldBody.debugBody.x = self._worldBody.x;
+    self._worldBody.debugBody.y = self._worldBody.y;
+    self._worldBody.debugBody.rotation = self._worldBody.rotation;
+  }
+
+};
+
+Player.prototype._postUpdate = function() {
+  var self = this;
   self._updateSprites();
   self._updateCollisionBody();
-  self._forceProperSpriteRendering();
-
+  //self._forceProperSpriteRendering();
 };
 
-Player.prototype._faceLeft = function() {
+Player.prototype.update = function(time) {
   var self = this;
-  self._direction = Player.FACING_LEFT;
-  this._sprite.scale.x = -1.0;
+  self._preUpdate();
+  self._update(time);
+  self._postUpdate();
 };
 
-Player.prototype._faceRight = function() {
+// Override these
+Player.prototype._preUpdate = function() {};
+Player.prototype._update = function(time) {};
+Player.prototype._setState = function(state) {};
+Player.prototype._setNextState = function() {};
+Player.prototype.canMove = function() { return true; };
+
+Player.prototype._isMovingHorizontally = function() {
   var self = this;
-  self._direction = 0;
-  self._sprite.scale.x = 1.0;
+  var left = self._keystate & Player.LEFT_PRESSED,
+      right = self._keystate & Player.RIGHT_PRESSED;
+  return (left && !right) || (!left && right);
 };
 
-Player.prototype._setNextState = function() {
+Player.prototype._isMovingVertically = function() {
   var self = this;
-  if (self._movingHorizontally() || self._movingVertically()) {
-    self._setWalk();
+  var up = self._keystate & Player.UP_PRESSED,
+      down = self._keystate & Player.DOWN_PRESSED;
+  return (up && !down) || (!up && down);
+};
+
+Vice.prototype = Object.create(Player.prototype);
+Vice.constructor = Vice;
+
+Vice.IDLING      = 0;
+Vice.WALKING     = 1;
+Vice.PUNCHING    = 3;
+Vice.HEADBUTTING = 4;
+Vice.DAMAGED     = 2;
+Vice.FALLING     = 5;
+Vice.RECOVERING  = 6;
+Vice.GHOSTING    = 7;
+Vice.DAMAGE_TIME = 200; // ms
+Vice.PUNCH_TIME  = 50;  // ms
+
+function Vice(game, options) {
+  var self = this;
+  options = options || {};
+
+  Player.call(self, game, options);
+
+  var position = options.position;
+  self._sprite = new Phaser.Sprite(self._game, position.x, position.y, 'vice-atlas', 'idle-0');
+  self._sprite.anchor.setTo(0.5, 1.0);
+  self._sprite.smoothed = false;
+  // idle animation
+  self._sprite.animations.add('idle', [
+    'idle-0',
+    'idle-1',
+    'idle-2',
+    'idle-1'
+  ], 6, true);
+  // walk animation
+  self._sprite.animations.add('walk', [
+    'walk-0',
+    'walk-1',
+    'walk-2', 
+    'walk-1'
+  ], 10, true);
+  // recover animation
+  self._sprite.animations.add('recover', [
+    'recover-0',
+    'recover-1',
+    'recover-2'
+  ], 4, false);
+  // add the sprite to sprite group for z-sorting
+  if (typeof options.playerSpriteGroup === 'object') {
+    var group = options.playerSpriteGroup;
+    group.add(self._sprite);
+  }
+
+  if (typeof options.state === 'number') {
+    self.setState(options.state);
   } else {
-    self._setIdle();
+    self._setState(Vice.IDLING);
+  }
+
+};
+
+Vice.prototype.canMove = function() {
+  var self = this;
+  return (self._state <= Vice.WALKING);
+};
+
+Vice.prototype._setNextState = function() {
+  var self = this;
+  if (self._isMovingHorizontally() || self._isMovingVertically()) {
+    self._walk();
+  } else {
+    self._idle();
   }
 };
 
-Player.prototype._setWalk = function() {
+Vice.prototype._idle = function() {
   var self = this;
-  self._state = Player.WALK;
+  self._state = Vice.IDLING;
+  self._currentAnimation = self._sprite.animations.play('idle');
+};
+
+Vice.prototype._walk = function() {
+  var self = this;
+  self._state = Vice.WALKING;
   // face sprite in moving direction
   if (self._keystate & Player.LEFT_PRESSED) {
     self._faceLeft();
   } else if (self._keystate & Player.RIGHT_PRESSED) {
     self._faceRight();
   }
-  self._setAnimation('walk', 10);
+  self._currentAnimation = self._sprite.animations.play('walk');
 };
 
-Player.prototype._setIdle = function() {
+Vice.prototype._punch = function() {
   var self = this;
-  self._state = Player.IDLE;
-  self._setAnimation('idle', 6);
-};
-
-Player.prototype.punch = function() {
-  var self = this;
-  if (self._state & Player.CAN_PUNCH) {
-    self._punchTime = new Date().getTime();
-    self._setPunch();
+  if (self._state <= Vice.WALKING) {
+    self._state = Vice.PUNCHING;
+    self._stateStartTime = new Date().getTime();
+    self._sprite.frameName = 'punch';
   }
 };
 
-Player.prototype._setPunch = function() {
+Vice.prototype._headbutt = function() {
   var self = this;
-  self._state = Player.PUNCH;
-  self._setAnimation('punch', 1, false);
+  self._state = Vice.HEADBUTTING;
+  self._stateStartTime = new Date().getTime();
 };
 
-Player.prototype.hit = function(damage) {
+Vice.prototype.hit = function(damage) {
   var self = this;
   if (self._state & Player.CAN_HIT) {
     self._damage += 5; // FIXME
@@ -562,47 +519,103 @@ Player.prototype.hit = function(damage) {
   }
 };
 
-Player.prototype._setHit = function() {
+Vice.prototype._damage = function() {
   var self = this;
-  self._hitTime = new Date().getTime();
-  self._state = Player.HIT;
-  self._sprite.animations.play('hit', 1, false);
+  self._state = Vice.DAMAGED;
+  self._stateStartTime = new Date().getTime();
 };
 
-Player.prototype._setFall = function() {
+Vice.prototype._fall = function() {
   var self = this;
-  self._damage = 0;
-  self._hitTime = new Date().getTime();
-  self._yAtHit = self._sprite.y;
-  self._state = Player.FALL;
-  self._sprite.animations.play('falling', 1, false);
+  self._state = Vice.FALLING;
   self._shadow.visible = true;
+  self._currentAnimation = self._sprite.animations.play('fall');
+  self._stateStartTime = new Date().getTime();
+  self._stateStartPosition = { 
+    x: self._sprite.x,
+    y: self._sprite.y,
+    z: self._sprite.z
+  };
 };
 
-Player.prototype._setRecover = function() {
+Vice.prototype._recover = function() {
   var self = this;
-  self._state = Player.RECOVER;
+  self._state = state;
   self._shadow.visible = false;
-  self._setAnimation('recover', 4, false);
+  self._currentAnimation = self._sprite.animations.play('recover');
 };
 
-Player.prototype._setAnimation = function(animation, fps, loop) {
+Vice.prototype._ghost = function() {
   var self = this;
-  loop = (typeof loop === 'boolean') ? loop : true;
-  fps = (typeof fps === 'number') ? fps : 12;
-  self._animation = self._sprite.animations.play(animation, fps, loop);
+  // TODO
 };
 
-Player.prototype._movingHorizontally = function() {
+Vice.prototype._setState = function(state) {
   var self = this;
-  var left = self._keystate & Player.LEFT_PRESSED,
-      right = self._keystate & Player.RIGHT_PRESSED;
-  return (left && !right) || (!left && right);
+
+  switch (state) {
+    case Vice.IDLING: self._idle(); break;
+    case Vice.WALKING: self._walk(); break;
+    case Vice.PUNCHING: self._punch(); break;
+    case Vice.HEADBUTTING: self._headbutt(); break;
+    case Vice.DAMAGED: self._damage(); break;
+    case Vice.FALLING: self._fall(); break;
+    case Vice.RECOVERING: self._recover(); break;
+    case Vice.GHOSTING: self._ghost(); break;
+    default: console.log('unknown state: ' + state); 
+  }
+
 };
 
-Player.prototype._movingVertically = function() {
+// Override
+Vice.prototype._update = function(time) {
   var self = this;
-  var up = self._keystate & Player.UP_PRESSED,
-      down = self._keystate & Player.DOWN_PRESSED;
-  return (up && !down) || (!up && down);
+
+  // clear velocity
+  self._worldBody.velocity.x = 0;
+  self._worldBody.velocity.y = 0;
+
+  switch (self._state) {
+    case Vice.WALKING:
+      var dx = Player.MAX_SPEED,
+          dy = Player.MAX_SPEED/2;
+      if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
+      if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
+      if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
+      if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
+      break;
+    case Vice.DAMAGED:
+      var dt = time - self._stateStartTime;
+      // console.log('time=' + time + ', hittime= ' + self._hitTime + ', dt=' + dt);
+      if (dt >= Player.DAMAGE_TIME) {
+        self._setNextState();
+      }
+      break;
+    case Vice.FALLING:
+      var t = (time - self._stateStartTime)/1000,
+          v0y = -200,
+          g = 500;
+      self._sprite.y = self._stateStartPosition.y + v0y*t + 0.5*g*t*t;
+      self._sprite.z = self._shadow.y;
+      // if falling animation has completed
+      if (self._sprite.y > self._yAtHit && t > 0) {
+        // start recovering
+        self._sprite.y = self._stateStartPosition.y;
+        self._setRecover();
+      }
+      break;
+    case Vice.RECOVERING:
+      if (!self._currentAnimation.isPlaying) {
+        self._setNextState();
+      }
+      break;
+    case Vice.PUNCHING:
+      var dt = time  - self._stateStartTime;
+      if (dt >= Vice.PUNCH_TIME) {
+        self._setNextState();
+      }
+      break;
+    default:
+  };
+
 };
