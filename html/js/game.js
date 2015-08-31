@@ -3,7 +3,7 @@
 Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.ASPECT = Game.WIDTH/Game.HEIGHT;
-Game.SERVER = 'ws://' + window.location.hostname + ':8188';
+Game.SERVER = 'ws://' + window.location.hostname + ':7000';
 Game.DEBUGGING = false;
 
 function Game(options) {
