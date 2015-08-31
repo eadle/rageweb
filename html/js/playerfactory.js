@@ -60,14 +60,18 @@ PlayerFactory.prototype.createPlayer = function(options) {
   options.debug = self._debug;
 
   var isClient = (typeof options.isClient === 'boolean') ? options.isClient : false;
-  if (!isClient) {
+  if (isClient) {
+    options.collisionConfig = {
+      bodies: self._physicsFactory.buildBodies(options.type, false, {categoryBits: [1]}),
+      collides: self._physicsFactory.getCollidesConfig(options.type),
+      collisionGroups: self._physicsFactory.getCollisionGroups()
+    };
+  } else {
     options.collisionConfig = {
       bodies: self._physicsFactory.buildBodies(options.type, false, {categoryBits: [2]}),
       collides: self._physicsFactory.getCollidesConfig(options.type),
       collisionGroups: self._physicsFactory.getCollisionGroups()
     };
-  } else {
-    options.collisionConfig = self._physicsFactory.getCollisionConfig(options.type);
   }
 
   switch (options.type) {

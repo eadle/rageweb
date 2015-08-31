@@ -329,8 +329,8 @@ PhysicsFactory.prototype.buildBodies = function(key, setCollisionGroups, options
             useThisBody = true;
             break;
           }
-          if (!useThisBody) continue;
         }
+        if (!useThisBody) continue;
       }
       if (setCollisionGroups && (categoryBits in self._collisionGroups)) {
         rightBody.setCollisionGroup(self._collisionGroups[categoryBits]);
