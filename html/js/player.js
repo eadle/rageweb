@@ -62,6 +62,9 @@ function Player(game, options) {
   self._shadow.visible = false;
   self._shadow.smoothed = false;
 
+  // for player sprite
+  self._lockSpriteToBody = true;
+
   // add the sprites to sprite group for z-sorting
   if (typeof options.playerSpriteGroup === 'object') {
     var group = options.playerSpriteGroup;
@@ -81,8 +84,12 @@ function Player(game, options) {
     // custom properties
     leftBody.player = self;
     rightBody.player = self;
-    leftBody.categoryBits = categoryBits;
-    rightBody.categoryBits = categoryBits;
+    var isHitbox = (categoryBits === 1);
+    var isAttack = (categoryBits === 2);
+    leftBody.isHitbox = isHitbox;
+    rightBody.isHitbox = isHitbox;
+    leftBody.isAttack = isAttack;
+    rightBody.isAttack = isAttack;
     // normal properties
     leftBody.fixedRotation = true;
     rightBody.fixedRotation = true;
@@ -267,32 +274,7 @@ Player.prototype._enableBody = function(body, categoryBits) {
   body.collides(self._collisionConfig.collides[categoryBits], self._collisionCallback, this);
 };
 
-// FIXME -- this is a fucking mess
-Player.prototype._collisionCallback = function(body1, body2) {
-  var self = this;
-  
-  var maxZMargin = 7;
-  if (body1.player._id === body2.player._id) return;
 
-  if (body1.categoryBits === 1 && body1.player._id === self._id) {
-    if (body2.categoryBits === 2 && body1.player._isClient) {
-      var zDiff = Math.abs(body1.player._shadow.y - body2.player._shadow.y);
-      if (zDiff <= maxZMargin) {
-        self._damage();
-      }
-    }
-  }
-
-  if (body2.categoryBits === 1 && body2.player._id === self._id) {
-    if (body1.categoryBits === 2 && body2.player._isClient) {
-      var zDiff = Math.abs(body2.player._shadow.y - body1.player._shadow.y);
-      if (zDiff <= maxZMargin) {
-        self._damage();
-      }
-    }
-  }
-
-}
 
 Player.prototype._updateCollisionBody = function() {
   var self = this;
@@ -339,21 +321,24 @@ Player.prototype._forceProperSpriteRendering = function() {
 Player.prototype._updateSprites = function() {
   var self = this;
 
-  // lock shadow to body
+  self._worldBody.x = Math.round(self._worldBody.x);
+  self._worldBody.y = Math.round(self._worldBody.y);
+
+  // shadow is always locked to body
   self._shadow.x = self._worldBody.x;
   self._shadow.y = self._worldBody.y + self._yOffset;
   self._shadow.z = self._shadow.y;
 
-  // lock sprite to body
-  self._sprite.x = self._worldBody.x;
-  if (self._state !== Player.FALL) {
+  // sprite may not be locked to body
+  if (self._lockSpriteToBody) {
+    self._sprite.x = self._shadow.x;
     self._sprite.y = self._shadow.y;
+    self._sprite.z = self._shadow.z;
   }
-  self._sprite.z = self._shadow.z;
 
-  // lock text to body
+  // text is locked to body but offset vertically
   if (self._text) {
-    self._text.x = self._worldBody.x - 1;
+    self._text.x = self._worldBody.x;
     self._text.y = self._sprite.y + self._textYOffset - 1;
     self._text.z = self._sprite.z;
   }
@@ -382,11 +367,13 @@ Player.prototype.update = function(time) {
 };
 
 // Override these
+Player.prototype.canMove = function() { return true; };
 Player.prototype._preUpdate = function() {};
 Player.prototype._update = function(time) {};
 Player.prototype._setState = function(state) {};
 Player.prototype._setNextState = function() {};
-Player.prototype.canMove = function() { return true; };
+Player.prototype._collisionCallback = function(bodyA, bodyB) {};
+
 
 Player.prototype._isMovingHorizontally = function() {
   var self = this;
@@ -407,14 +394,14 @@ Vice.constructor = Vice;
 
 Vice.IDLING      = 0;
 Vice.WALKING     = 1;
-Vice.PUNCHING    = 3;
-Vice.HEADBUTTING = 4;
-Vice.DAMAGED     = 2;
+Vice.PUNCHING    = 2;
+Vice.HEADBUTTING = 3;
+Vice.DAMAGED     = 4;
 Vice.FALLING     = 5;
 Vice.RECOVERING  = 6;
 Vice.GHOSTING    = 7;
-Vice.DAMAGE_TIME = 200; // ms
-Vice.PUNCH_TIME  = 50;  // ms
+Vice.DAMAGE_TIME = 150; // ms
+Vice.PUNCH_TIME  = 100;  // ms
 
 function Vice(game, options) {
   var self = this;
@@ -458,6 +445,9 @@ function Vice(game, options) {
     self._setState(Vice.IDLING);
   }
 
+  // custom attributes
+  self._timesHit = 0;
+
 };
 
 Vice.prototype.canMove = function() {
@@ -465,22 +455,29 @@ Vice.prototype.canMove = function() {
   return (self._state <= Vice.WALKING);
 };
 
+Vice.prototype._collisionCallback = function(bodyA, bodyB) {
+  var self = this;
+  if (Math.abs(bodyA.player._shadow.y - bodyB.player._shadow.y) <= 10) {
+    self.hit();
+  }
+}
+
 Vice.prototype._setNextState = function() {
   var self = this;
   if (self._isMovingHorizontally() || self._isMovingVertically()) {
-    self._walk();
+    self._setWalking();
   } else {
-    self._idle();
+    self._setIdling();
   }
 };
 
-Vice.prototype._idle = function() {
+Vice.prototype._setIdling = function() {
   var self = this;
   self._state = Vice.IDLING;
   self._currentAnimation = self._sprite.animations.play('idle');
 };
 
-Vice.prototype._walk = function() {
+Vice.prototype._setWalking = function() {
   var self = this;
   self._state = Vice.WALKING;
   // face sprite in moving direction
@@ -492,16 +489,17 @@ Vice.prototype._walk = function() {
   self._currentAnimation = self._sprite.animations.play('walk');
 };
 
-Vice.prototype._punch = function() {
+Vice.prototype._setPunching = function() {
   var self = this;
   if (self._state <= Vice.WALKING) {
     self._state = Vice.PUNCHING;
     self._stateStartTime = new Date().getTime();
+    self._sprite.animations.stop();
     self._sprite.frameName = 'punch';
   }
 };
 
-Vice.prototype._headbutt = function() {
+Vice.prototype._setHeadbutting = function() {
   var self = this;
   self._state = Vice.HEADBUTTING;
   self._stateStartTime = new Date().getTime();
@@ -509,43 +507,50 @@ Vice.prototype._headbutt = function() {
 
 Vice.prototype.hit = function(damage) {
   var self = this;
-  if (self._state & Player.CAN_HIT) {
-    self._damage += 5; // FIXME
-    if (self._damage < Player.MAX_DAMAGE) {
-      self._setHit();
+  if (self._state <= Vice.WALKING) {
+    self._timesHit += 1;
+    if (self._timesHit < 3) {
+      self.setDamaged();
     } else {
-      self._setFall();
+      self._timesHit = 0;
+      self._setFalling();
     }
   }
 };
 
-Vice.prototype._damage = function() {
+Vice.prototype.setDamaged = function() {
   var self = this;
+  console.log('damage');
   self._state = Vice.DAMAGED;
   self._stateStartTime = new Date().getTime();
+  self._sprite.animations.stop();
+  self._sprite.frameName = 'damage';
 };
 
-Vice.prototype._fall = function() {
+Vice.prototype._setFalling = function() {
   var self = this;
+  console.log('fall');
   self._state = Vice.FALLING;
   self._shadow.visible = true;
-  self._currentAnimation = self._sprite.animations.play('fall');
   self._stateStartTime = new Date().getTime();
   self._stateStartPosition = { 
     x: self._sprite.x,
-    y: self._sprite.y,
-    z: self._sprite.z
+    y: self._sprite.y
   };
+  self._sprite.animations.stop();
+  self._lockSpriteToBody = false;
+  self._sprite.frameName = 'fall';
 };
 
-Vice.prototype._recover = function() {
+Vice.prototype._setRecovering = function() {
   var self = this;
-  self._state = state;
+  self._state = Vice.RECOVERING;
   self._shadow.visible = false;
+  self._lockSpriteToBody = true;
   self._currentAnimation = self._sprite.animations.play('recover');
 };
 
-Vice.prototype._ghost = function() {
+Vice.prototype._setGhosting = function() {
   var self = this;
   // TODO
 };
@@ -554,14 +559,14 @@ Vice.prototype._setState = function(state) {
   var self = this;
 
   switch (state) {
-    case Vice.IDLING: self._idle(); break;
-    case Vice.WALKING: self._walk(); break;
-    case Vice.PUNCHING: self._punch(); break;
-    case Vice.HEADBUTTING: self._headbutt(); break;
-    case Vice.DAMAGED: self._damage(); break;
-    case Vice.FALLING: self._fall(); break;
-    case Vice.RECOVERING: self._recover(); break;
-    case Vice.GHOSTING: self._ghost(); break;
+    case Vice.IDLING: self._setIdling(); break;
+    case Vice.WALKING: self._setWalking(); break;
+    case Vice.PUNCHING: self._setPunching(); break;
+    case Vice.HEADBUTTING: self._setHeadbutting(); break;
+    case Vice.DAMAGED: self.setDamaged(); break;
+    case Vice.FALLING: self._setFalling(); break;
+    case Vice.RECOVERING: self._setRecovering(); break;
+    case Vice.GHOSTING: self._setGhosting(); break;
     default: console.log('unknown state: ' + state); 
   }
 
@@ -587,7 +592,7 @@ Vice.prototype._update = function(time) {
     case Vice.DAMAGED:
       var dt = time - self._stateStartTime;
       // console.log('time=' + time + ', hittime= ' + self._hitTime + ', dt=' + dt);
-      if (dt >= Player.DAMAGE_TIME) {
+      if (dt >= Vice.DAMAGE_TIME) {
         self._setNextState();
       }
       break;
@@ -598,10 +603,10 @@ Vice.prototype._update = function(time) {
       self._sprite.y = self._stateStartPosition.y + v0y*t + 0.5*g*t*t;
       self._sprite.z = self._shadow.y;
       // if falling animation has completed
-      if (self._sprite.y > self._yAtHit && t > 0) {
+      if (self._sprite.y > self._stateStartPosition.y && t > 0) {
         // start recovering
         self._sprite.y = self._stateStartPosition.y;
-        self._setRecover();
+        self._setRecovering();
       }
       break;
     case Vice.RECOVERING:

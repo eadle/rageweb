@@ -85,7 +85,7 @@ function Game(options) {
         playerCollisionGroup: self._playerCollisionGroup,
         hitboxCollisionGroup: self._hitboxCollisionGroup,
         attackCollisionGroup: self._attackCollisionGroup,
-        debug: true
+        debug: Game.DEBUGGING
       });
 
       // add collision layer to physics world
@@ -322,7 +322,7 @@ Game.prototype._updateClient = function(time) {
       self._clearClientKeystate();
       self._chat.selectInput();
     } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
-      self._client._punch();
+      self._client._setPunching();
     } else {
       if (self._client.canMove()) {
         if (self._leftPressed())  keystate |= Player.LEFT_PRESSED;
