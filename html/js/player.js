@@ -781,12 +781,10 @@ Max.prototype._update = function(time) {
       break;
     case Max.JUMPING:
 
-      self._worldBody.velocity.x = self._velocityOnJump.x;
-      self._sprite.x = Math.round(self._worldBody.x);
+
 
       switch (self._jumpState) {
         case 0: // initial crouch
-          console.log('crouching');
           var dt = time - self._crouchTime;
           if (dt >= Max.CROUCH_TIME) {
             self._jumpState = 1;
@@ -797,10 +795,14 @@ Max.prototype._update = function(time) {
             break;
           }
         case 1: // in air
-          console.log('in air');
+
+          self._worldBody.velocity.x = self._velocityOnJump.x;
+          self._sprite.x = Math.round(self._worldBody.x);
+
           dt = (time - self._jumpTime)/1000;
           self._sprite.y = self._positionOnJump.y + dt*(Max.JUMP_VELOCITY + dt*Player.HALF_GRAVITY);
           self._sprite.z = self._shadow.y;
+
           if (dt > 0 && self._sprite.y > self._positionOnJump.y) {
             self._sprite.y = self._positionOnJump.y;
             self._jumpState = 2;
@@ -810,7 +812,6 @@ Max.prototype._update = function(time) {
           }
           break;
         case 2: // landing
-          console.log('landing');
           dt = time - self._landTime;
           if (dt >= Max.CROUCH_TIME) {
             self._setNextState();
