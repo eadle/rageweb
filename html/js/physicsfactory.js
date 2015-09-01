@@ -291,7 +291,8 @@ PhysicsFactory.prototype.getCollisionGroups = function() {
 PhysicsFactory.prototype.getCollidesConfig = function(key) {
   var self = this;
   if (!(key in self._playerConfig)) {
-    throw new Error('Player key is not in PhysicsFactory: ' + key);
+    return [];
+    //throw new Error('Player key is not in PhysicsFactory: ' + key);
   }
   return self._collidesConfig[key];
 };
@@ -305,7 +306,8 @@ PhysicsFactory.prototype.buildBodies = function(key, setCollisionGroups, options
   var useCategoryBits = options.categoryBits || [];
 
   if (!(key in self._playerConfig)) {
-    throw new Error('Player key is not in PhysicsFactory: ' + key);
+    return {};
+    // throw new Error('Player key is not in PhysicsFactory: ' + key);
   }
 
   var bodies = {};

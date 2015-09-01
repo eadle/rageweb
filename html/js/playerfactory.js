@@ -77,8 +77,8 @@ PlayerFactory.prototype.createPlayer = function(options) {
   switch (options.type) {
     case 'vice':
       return new Vice(self._game, options);
-    //case 'max':
-      //return new Max(self._game, options);
+    case 'max':
+      return new Max(self._game, options);
     default:
       return null;
   }

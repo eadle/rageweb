@@ -40,11 +40,16 @@ function Game(options) {
       self._game.stage.disableVisibilityChange = true;
       // load assets
       self._game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
-      self._game.load.atlas('vice-atlas', 'assets/vice.png', 'assets/vice-atlas.json');
-      self._game.load.physics('vice-physics', 'assets/vice-physics.json');
-      self._game.load.image('shadow', 'assets/shadow.png');
-      self._game.load.tilemap('subway-map', 'assets/maps/subway32.json',null, Phaser.Tilemap.TILED_JSON);
-      self._game.load.image('subway', 'assets/images/subway32.png');
+
+      self._game.load.atlas('vice-atlas', 'assets/players/vice/vice.png', 'assets/players/vice/vice-atlas.json');
+      self._game.load.physics('vice-physics', 'assets/players/vice/vice-physics.json');
+
+      self._game.load.atlas('max-atlas', 'assets/players/max/max.png', 'assets/players/max/max-atlas.json');
+      // self._game.load.physics('max-physics', 'assets/players/max/max-physics.json');
+
+      self._game.load.image('shadow', 'assets/players/shadow.png');
+      self._game.load.tilemap('subway-map', 'assets/levels/subway32.json',null, Phaser.Tilemap.TILED_JSON);
+      self._game.load.image('subway', 'assets/levels/subway32.png');
       // UI callbacks
       self._setupCanvasScaling();
       self._setupDispatchEvents();
@@ -276,7 +281,7 @@ Game.prototype._addClient = function(client) {
   var self = this;
 
   self._client = self._playerFactory.createPlayer({
-    type: 'vice',
+    type: client.character,
     id: client.id,
     isClient: true,
     name: client.name,
@@ -293,7 +298,7 @@ Game.prototype._addPlayer = function(player) {
   var self = this;
   
   self._players[player.id] = self._playerFactory.createPlayer({
-    type: 'vice',
+    type: player.character,
     id: player.id,
     name: player.name,
     state: player.state,
@@ -322,7 +327,10 @@ Game.prototype._updateClient = function(time) {
       self._clearClientKeystate();
       self._chat.selectInput();
     } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
-      self._client._setPunching();
+      // TODO actually make an input buffer for combat
+      if (self._client._type === 'vice') {
+        self._client._setPunching();
+      }
     } else {
       if (self._client.canMove()) {
         if (self._leftPressed())  keystate |= Player.LEFT_PRESSED;

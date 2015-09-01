@@ -11,7 +11,6 @@ Player.KEYSTATE_MASK = 0x0F00;
 // direction encoding
 Player.FACING_LEFT = 1 << 12;
 // other shared attributes
-Player.MAX_SPEED = 180;
 Player.START_POS = {x: 256, y: 220}; // temp
 
 function Player(game, options) {
@@ -389,6 +388,7 @@ Player.prototype._isMovingVertically = function() {
   return (up && !down) || (!up && down);
 };
 
+
 Vice.prototype = Object.create(Player.prototype);
 Vice.constructor = Vice;
 
@@ -402,12 +402,15 @@ Vice.RECOVERING  = 6;
 Vice.GHOSTING    = 7;
 Vice.DAMAGE_TIME = 150; // ms
 Vice.PUNCH_TIME  = 100;  // ms
+Vice.SPEED = 180;
 
 function Vice(game, options) {
   var self = this;
   options = options || {};
 
   Player.call(self, game, options);
+
+  self._type = 'vice';
 
   var position = options.position;
   self._sprite = new Phaser.Sprite(self._game, position.x, position.y, 'vice-atlas', 'idle-0');
@@ -582,8 +585,8 @@ Vice.prototype._update = function(time) {
 
   switch (self._state) {
     case Vice.WALKING:
-      var dx = Player.MAX_SPEED,
-          dy = Player.MAX_SPEED/2;
+      var dx = Vice.SPEED,
+          dy = Vice.SPEED/2;
       if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
       if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
       if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
@@ -622,5 +625,122 @@ Vice.prototype._update = function(time) {
       break;
     default:
   };
+
+};
+
+
+Max.prototype = Object.create(Player.prototype);
+Max.constructor = Max;
+
+Max.IDLING  = 0;
+Max.WALKING = 1;
+Max.SPEED = 170;
+
+function Max(game, options) {
+  var self = this;
+  options = options || {};
+
+  Player.call(self, game, options);
+
+  self._type = 'max';
+  self._textYOffset = -95;
+
+  var position = options.position;
+  self._sprite = new Phaser.Sprite(self._game, position.x, position.y, 'max-atlas', 'idle-0');
+  self._sprite.anchor.setTo(0.5, 1.0);
+  self._sprite.smoothed = false;
+  // idle animation
+  self._sprite.animations.add('idle', [
+    'idle-0',
+    'idle-1',
+    'idle-2',
+    'idle-1'
+  ], 6, true);
+  // walk animation
+  self._sprite.animations.add('walk', [
+    'walk-0',
+    'walk-1',
+    'walk-2', 
+    'walk-3',
+    'walk-4',
+    'walk-5'
+  ], 10, true);
+  // add the sprite to sprite group for z-sorting
+  if (typeof options.playerSpriteGroup === 'object') {
+    var group = options.playerSpriteGroup;
+    group.add(self._sprite);
+  }
+
+  if (typeof options.state === 'number') {
+    self.setState(options.state);
+  } else {
+    self._setState(Max.IDLING);
+  }
+
+}
+
+Max.prototype.canMove = function() {
+  var self = this;
+  return (self._state <= Max.WALKING);
+};
+
+Max.prototype._setState = function(state) {
+  var self = this;
+
+  switch (state) {
+    case Max.IDLING: self._setIdling(); break;
+    case Max.WALKING: self._setWalking(); break;
+    default: console.log('unknown state: ' + state); 
+  }
+
+};
+
+Max.prototype._setNextState = function() {
+  var self = this;
+  if (self._isMovingHorizontally() || self._isMovingVertically()) {
+    self._setWalking();
+  } else {
+    self._setIdling();
+  }
+};
+
+Max.prototype._setIdling = function() {
+  var self = this;
+  self._state = Max.IDLING;
+  self._currentAnimation = self._sprite.animations.play('idle');
+};
+
+Max.prototype._setWalking = function() {
+  var self = this;
+  console.log('set walk');
+  self._state = Max.WALKING;
+  // face sprite in moving direction
+  if (self._keystate & Player.LEFT_PRESSED) {
+    self._faceLeft();
+  } else if (self._keystate & Player.RIGHT_PRESSED) {
+    self._faceRight();
+  }
+  self._currentAnimation = self._sprite.animations.play('walk');
+};
+
+Max.prototype._update = function(time) {
+  var self = this;
+
+  // clear velocity
+  self._worldBody.velocity.x = 0;
+  self._worldBody.velocity.y = 0;
+
+  console.log('update');
+  switch (self._state) {
+    case Max.WALKING:
+      var dx = Max.SPEED,
+          dy = Max.SPEED/2;
+      if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
+      if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
+      if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
+      if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
+      break;
+    default:
+  }
 
 };

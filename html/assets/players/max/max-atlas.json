@@ -1,0 +1,93 @@
+{"frames": {
+
+"idle-0":
+{
+	"frame": {"x":513,"y":2,"w":63,"h":81},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":0,"y":4,"w":63,"h":81},
+	"sourceSize": {"w":64,"h":85},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"idle-1":
+{
+	"frame": {"x":448,"y":2,"w":63,"h":83},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":1,"y":2,"w":63,"h":83},
+	"sourceSize": {"w":64,"h":85},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"idle-2":
+{
+	"frame": {"x":249,"y":2,"w":61,"h":85},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":3,"y":0,"w":61,"h":85},
+	"sourceSize": {"w":64,"h":85},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"walk-0":
+{
+	"frame": {"x":2,"y":2,"w":53,"h":86},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":8,"y":0,"w":53,"h":86},
+	"sourceSize": {"w":78,"h":86},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"walk-1":
+{
+	"frame": {"x":57,"y":2,"w":62,"h":85},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":3,"y":1,"w":62,"h":85},
+	"sourceSize": {"w":78,"h":86},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"walk-2":
+{
+	"frame": {"x":368,"y":2,"w":78,"h":84},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":0,"y":2,"w":78,"h":84},
+	"sourceSize": {"w":78,"h":86},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"walk-3":
+{
+	"frame": {"x":121,"y":2,"w":62,"h":85},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":3,"y":1,"w":62,"h":85},
+	"sourceSize": {"w":78,"h":86},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"walk-4":
+{
+	"frame": {"x":312,"y":2,"w":54,"h":85},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":8,"y":1,"w":54,"h":85},
+	"sourceSize": {"w":78,"h":86},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"walk-5":
+{
+	"frame": {"x":185,"y":2,"w":62,"h":85},
+	"rotated": false,
+	"trimmed": true,
+	"spriteSourceSize": {"x":4,"y":1,"w":62,"h":85},
+	"sourceSize": {"w":78,"h":86},
+	"pivot": {"x":0.5,"y":0.5}
+}},
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "max.png",
+	"format": "RGBA8888",
+	"size": {"w":578,"h":90},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:536c377f224e818b4f243f42f05db999:e4b84b4d0c63c5426fdd082f5fdb4e77:bc790df2033c3c49a0c97a7d3d6d9a66$"
+}
+}
