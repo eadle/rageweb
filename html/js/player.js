@@ -44,8 +44,8 @@ function Player(game, options) {
   // player name
   self._text = null;
   if (self.hasName()) {
-    self._textYOffset = (typeof options.textOffset === 'number') ? options.textOffset : -88;
-    self._text = new Phaser.Text(game, position.x, position.y + self._textYOffset, self._name);
+    self._textOffset = {x: 0, y: -88};
+    self._text = new Phaser.Text(game, position.x, position.y + self._textOffset.y, self._name);
     self._text.anchor.setTo(0.5, 0.0);
     self._text.font = 'Press Start 2P';
     self._text.fontWeight = 'normal';
@@ -102,7 +102,7 @@ function Player(game, options) {
 
   // capsule can have same dimensions as shadow
   var radius = self._shadow.height/1.5;
-  self._yOffset = radius/2;
+  self._shadowOffset = {x: 0, y: radius/2};
   self._worldBody = new Phaser.Physics.P2.Body(game, null, position.x, position.y, 1);
   self._worldBody.addCircle(radius);
   self._worldBody.debug = self._debug;
@@ -321,12 +321,12 @@ Player.prototype._forceProperSpriteRendering = function() {
 Player.prototype._updateSprites = function() {
   var self = this;
 
-  self._worldBody.x = Math.round(self._worldBody.x);
-  self._worldBody.y = Math.round(self._worldBody.y);
+  self._worldBody.x = self._worldBody.x;
+  self._worldBody.y = self._worldBody.y;
 
   // shadow is always locked to body
-  self._shadow.x = self._worldBody.x;
-  self._shadow.y = self._worldBody.y + self._yOffset;
+  self._shadow.x = Math.floor(self._worldBody.x + self._shadowOffset.x);
+  self._shadow.y = Math.floor(self._worldBody.y + self._shadowOffset.y);
   self._shadow.z = self._shadow.y;
 
   // sprite may not be locked to body
@@ -338,8 +338,8 @@ Player.prototype._updateSprites = function() {
 
   // text is locked to body but offset vertically
   if (self._text) {
-    self._text.x = self._worldBody.x;
-    self._text.y = self._sprite.y + self._textYOffset - 1;
+    self._text.x = Math.floor(self._shadow.x + self._textOffset.x);
+    self._text.y = Math.floor(self._sprite.y + self._textOffset.y);
     self._text.z = self._sprite.z;
   }
 
@@ -356,7 +356,7 @@ Player.prototype._postUpdate = function() {
   var self = this;
   self._updateSprites();
   self._updateCollisionBody();
-  self._forceProperSpriteRendering();
+  //self._forceProperSpriteRendering();
 };
 
 Player.prototype.update = function(time) {
@@ -639,6 +639,8 @@ Max.JUMPING = 2;
 Max.SPEED = 170;
 Max.CROUCH_TIME = 50; // ms
 Max.JUMP_VELOCITY = -300;
+Max.TEXT_OFFSET_X = 0;
+Max.TEXT_OFFSET_Y = -97;
 
 function Max(game, options) {
   var self = this;
@@ -647,7 +649,7 @@ function Max(game, options) {
   Player.call(self, game, options);
 
   self._type = 'max';
-  self._textYOffset = -100;
+  self._textOffset = {x: Max.TEXT_OFFSET_X, y: Max.TEXT_OFFSET_Y};
 
   var position = options.position;
   self._sprite = new Phaser.Sprite(self._game, position.x, position.y, 'max-atlas', 'idle-0');
@@ -658,7 +660,8 @@ function Max(game, options) {
     'idle-0',
     'idle-1',
     'idle-2',
-    'idle-1'
+    'idle-1',
+    'idle-0'
   ], 6, true);
   // walk animation
   self._sprite.animations.add('walk', [
@@ -691,6 +694,13 @@ function Max(game, options) {
 
 }
 
+Max.prototype._clearState = function() {
+  var self = this;
+  self._lockSpriteToBody = true;
+  self._shadow.visible = false;
+  self._textOffset = {x: Max.TEXT_OFFSET_X, y: Max.TEXT_OFFSET_Y};
+};
+
 Max.prototype.canMove = function() {
   var self = this;
   return (self._state <= Max.WALKING);
@@ -719,18 +729,14 @@ Max.prototype._setNextState = function() {
 
 Max.prototype._setIdling = function() {
   var self = this;
-  self._lockSpriteToBody = true;
-  self._shadow.visible = false;
-
+  self._clearState();
   self._state = Max.IDLING;
   self._currentAnimation = self._sprite.animations.play('idle');
 };
 
 Max.prototype._setWalking = function() {
   var self = this;
-  self._lockSpriteToBody = true;
-  self._shadow.visible = false;
-
+  self._clearState();
   self._state = Max.WALKING;
   // face sprite in moving direction
   if (self._keystate & Player.LEFT_PRESSED) {
@@ -744,6 +750,7 @@ Max.prototype._setWalking = function() {
 Max.prototype._setJumping = function() {
   var self = this;
   if (self._state <= Max.WALKING) {
+    self._clearState();
     self._state = Max.JUMPING;
 
     self._sprite.animations.stop();
@@ -784,8 +791,8 @@ Max.prototype._update = function(time) {
       if (self._jumpState > 0) {
         self._worldBody.velocity.x = self._velocityOnJump.x;
         self._worldBody.velocity.y = self._velocityOnJump.y;
-        self._sprite.x = self._worldBody.x;
-        self._sprite.y = self._worldBody.y;
+        self._sprite.x = Math.floor(self._worldBody.x);
+        self._sprite.y = Math.floor(self._worldBody.y);
       }
 
       switch (self._jumpState) {
@@ -796,6 +803,7 @@ Max.prototype._update = function(time) {
             self._jumpTime = time;
             self._sprite.frameName = 'jump-1';
             self._shadow.visible = true;
+            self._textOffset.y = -105;
           } else {
             break;
           }
