@@ -330,6 +330,8 @@ Game.prototype._updateClient = function(time) {
       // TODO actually make an input buffer for combat
       if (self._client._type === 'vice') {
         self._client._setPunching();
+      } else {
+        self._client._setJumping();
       }
     } else {
       if (self._client.canMove()) {

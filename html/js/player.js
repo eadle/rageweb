@@ -12,6 +12,7 @@ Player.KEYSTATE_MASK = 0x0F00;
 Player.FACING_LEFT = 1 << 12;
 // other shared attributes
 Player.START_POS = {x: 256, y: 220}; // temp
+Player.HALF_GRAVITY = 300;
 
 function Player(game, options) {
   var self = this;
@@ -355,7 +356,7 @@ Player.prototype._postUpdate = function() {
   var self = this;
   self._updateSprites();
   self._updateCollisionBody();
-  //self._forceProperSpriteRendering();
+  self._forceProperSpriteRendering();
 };
 
 Player.prototype.update = function(time) {
@@ -523,7 +524,6 @@ Vice.prototype.hit = function(damage) {
 
 Vice.prototype.setDamaged = function() {
   var self = this;
-  console.log('damage');
   self._state = Vice.DAMAGED;
   self._stateStartTime = new Date().getTime();
   self._sprite.animations.stop();
@@ -532,7 +532,6 @@ Vice.prototype.setDamaged = function() {
 
 Vice.prototype._setFalling = function() {
   var self = this;
-  console.log('fall');
   self._state = Vice.FALLING;
   self._shadow.visible = true;
   self._stateStartTime = new Date().getTime();
@@ -632,9 +631,14 @@ Vice.prototype._update = function(time) {
 Max.prototype = Object.create(Player.prototype);
 Max.constructor = Max;
 
+// states
 Max.IDLING  = 0;
 Max.WALKING = 1;
+Max.JUMPING = 2;
+// constants
 Max.SPEED = 170;
+Max.CROUCH_TIME = 50; // ms
+Max.JUMP_VELOCITY = -300;
 
 function Max(game, options) {
   var self = this;
@@ -643,7 +647,7 @@ function Max(game, options) {
   Player.call(self, game, options);
 
   self._type = 'max';
-  self._textYOffset = -95;
+  self._textYOffset = -100;
 
   var position = options.position;
   self._sprite = new Phaser.Sprite(self._game, position.x, position.y, 'max-atlas', 'idle-0');
@@ -677,6 +681,14 @@ function Max(game, options) {
     self._setState(Max.IDLING);
   }
 
+  // jump substates (crouch=0, jump=1, land=2)
+  self._jumpState  = -1;
+  self._crouchTime = -1;
+  self._jumpTime   = -1;
+  self._landTime   = -1;
+  self._velocityOnJump = {x: 0, y: 0};
+  self._positionOnJump = {x: 0, y: 0};
+
 }
 
 Max.prototype.canMove = function() {
@@ -690,6 +702,7 @@ Max.prototype._setState = function(state) {
   switch (state) {
     case Max.IDLING: self._setIdling(); break;
     case Max.WALKING: self._setWalking(); break;
+    case Max.JUMPING: self._setJumping(); break;
     default: console.log('unknown state: ' + state); 
   }
 
@@ -706,13 +719,18 @@ Max.prototype._setNextState = function() {
 
 Max.prototype._setIdling = function() {
   var self = this;
+  self._lockSpriteToBody = true;
+  self._shadow.visible = false;
+
   self._state = Max.IDLING;
   self._currentAnimation = self._sprite.animations.play('idle');
 };
 
 Max.prototype._setWalking = function() {
   var self = this;
-  console.log('set walk');
+  self._lockSpriteToBody = true;
+  self._shadow.visible = false;
+
   self._state = Max.WALKING;
   // face sprite in moving direction
   if (self._keystate & Player.LEFT_PRESSED) {
@@ -723,6 +741,28 @@ Max.prototype._setWalking = function() {
   self._currentAnimation = self._sprite.animations.play('walk');
 };
 
+Max.prototype._setJumping = function() {
+  var self = this;
+  if (self._state <= Max.WALKING) {
+    self._state = Max.JUMPING;
+
+    self._sprite.animations.stop();
+    self._sprite.frameName = 'jump-0';
+    self._lockSpriteToBody = false;
+
+    self._jumpState = 0;
+    self._crouchTime = new Date().getTime();
+    self._positionOnJump = { 
+      x: self._sprite.x,
+      y: self._sprite.y
+    };  
+    self._velocityOnJump = {
+      x: self._worldBody.velocity.x,
+      y: self._worldBody.velocity.y
+    };
+  }
+};
+
 Max.prototype._update = function(time) {
   var self = this;
 
@@ -730,7 +770,6 @@ Max.prototype._update = function(time) {
   self._worldBody.velocity.x = 0;
   self._worldBody.velocity.y = 0;
 
-  console.log('update');
   switch (self._state) {
     case Max.WALKING:
       var dx = Max.SPEED,
@@ -740,7 +779,46 @@ Max.prototype._update = function(time) {
       if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
       if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
       break;
+    case Max.JUMPING:
+
+      self._worldBody.velocity.x = self._velocityOnJump.x;
+      self._sprite.x = Math.round(self._worldBody.x);
+
+      switch (self._jumpState) {
+        case 0: // initial crouch
+          console.log('crouching');
+          var dt = time - self._crouchTime;
+          if (dt >= Max.CROUCH_TIME) {
+            self._jumpState = 1;
+            self._jumpTime = time;
+            self._sprite.frameName = 'jump-1';
+            self._shadow.visible = true;
+          } else {
+            break;
+          }
+        case 1: // in air
+          console.log('in air');
+          dt = (time - self._jumpTime)/1000;
+          self._sprite.y = self._positionOnJump.y + dt*(Max.JUMP_VELOCITY + dt*Player.HALF_GRAVITY);
+          self._sprite.z = self._shadow.y;
+          if (dt > 0 && self._sprite.y > self._positionOnJump.y) {
+            self._sprite.y = self._positionOnJump.y;
+            self._jumpState = 2;
+            self._landTime = time;
+            self._sprite.frameName = 'jump-0';
+            self._shadow.visible = false;
+          }
+          break;
+        case 2: // landing
+          console.log('landing');
+          dt = time - self._landTime;
+          if (dt >= Max.CROUCH_TIME) {
+            self._setNextState();
+          }
+        default:
+      }
+
+      break;
     default:
   }
-
-};
+}
