@@ -312,10 +312,10 @@ Player.prototype._forceProperSpriteRendering = function() {
       spriteXOffset = (self._sprite.width%2)  ? 0 : -0.5,
       shadowYOffset = (self._shadow.height%2) ? 0 : -0.5,
       spriteYOffset = (self._sprite.height%2) ? 0 : -0.5;
-  self._shadow.x = Math.round(self._shadow.x) + shadowXOffset;
-  self._shadow.y = Math.round(self._shadow.y) + shadowYOffset;
-  self._sprite.x = Math.round(self._sprite.x) + spriteXOffset;
-  self._sprite.y = Math.round(self._sprite.y) + spriteYOffset;
+  self._shadow.x = Math.floor(self._shadow.x) + shadowXOffset;
+  self._shadow.y = Math.floor(self._shadow.y) + shadowYOffset;
+  self._sprite.x = Math.floor(self._sprite.x) + spriteXOffset;
+  self._sprite.y = Math.floor(self._sprite.y) + spriteYOffset;
 };
 
 Player.prototype._updateSprites = function() {
@@ -781,7 +781,12 @@ Max.prototype._update = function(time) {
       break;
     case Max.JUMPING:
 
-
+      if (self._jumpState > 0) {
+        self._worldBody.velocity.x = self._velocityOnJump.x;
+        self._worldBody.velocity.y = self._velocityOnJump.y;
+        self._sprite.x = self._worldBody.x;
+        self._sprite.y = self._worldBody.y;
+      }
 
       switch (self._jumpState) {
         case 0: // initial crouch
@@ -795,16 +800,12 @@ Max.prototype._update = function(time) {
             break;
           }
         case 1: // in air
-
-          self._worldBody.velocity.x = self._velocityOnJump.x;
-          self._sprite.x = Math.round(self._worldBody.x);
-
           dt = (time - self._jumpTime)/1000;
-          self._sprite.y = self._positionOnJump.y + dt*(Max.JUMP_VELOCITY + dt*Player.HALF_GRAVITY);
+          self._sprite.y = self._shadow.y + dt*(Max.JUMP_VELOCITY + dt*Player.HALF_GRAVITY);
           self._sprite.z = self._shadow.y;
 
-          if (dt > 0 && self._sprite.y > self._positionOnJump.y) {
-            self._sprite.y = self._positionOnJump.y;
+          if (dt > 0 && self._sprite.y > self._shadow.y) {
+            self._sprite.y = self._shadow.y;
             self._jumpState = 2;
             self._landTime = time;
             self._sprite.frameName = 'jump-0';
