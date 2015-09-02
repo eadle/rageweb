@@ -14,6 +14,7 @@ Player.FACING_LEFT = 1 << 12;
 Player.START_POS = {x: 256, y: 220}; // temp
 Player.HALF_GRAVITY = 300;
 
+
 function Player(game, options) {
   var self = this;
   options = options || {};
@@ -638,7 +639,7 @@ Max.JUMPING = 2;
 // constants
 Max.SPEED = 170;
 Max.CROUCH_TIME = 50; // ms
-Max.JUMP_VELOCITY = -300;
+Max.JUMP_VELOCITY = -400;
 Max.TEXT_OFFSET_X = 0;
 Max.TEXT_OFFSET_Y = -97;
 

@@ -13,7 +13,6 @@ function Game(options) {
   self._ws = null;
   self._chat = null;
   self._canvasElement = null;
-  self._cursors = null;
 
   self._client = null;
   self._players = {};
@@ -102,7 +101,7 @@ function Game(options) {
       }   
 
       // using cursor input
-      self._cursors = self._game.input.keyboard.createCursorKeys();
+      self._inputBuffer = new InputBuffer(self._game);
 
       // resize chat
       self._resizeChat();
@@ -326,19 +325,12 @@ Game.prototype._updateClient = function(time) {
     if (self._selectInputPressed()) {
       self._clearClientKeystate();
       self._chat.selectInput();
-    } else if (self._game.input.keyboard.isDown(Phaser.Keyboard.P)) {
-      // TODO actually make an input buffer for combat
-      if (self._client._type === 'vice') {
-        self._client._setPunching();
-      } else {
-        self._client._setJumping();
-      }
     } else {
       if (self._client.canMove()) {
-        if (self._leftPressed())  keystate |= Player.LEFT_PRESSED;
-        if (self._rightPressed()) keystate |= Player.RIGHT_PRESSED;
-        if (self._upPressed())    keystate |= Player.UP_PRESSED;
-        if (self._downPressed())  keystate |= Player.DOWN_PRESSED;
+        if (self._inputBuffer._leftPressed)  keystate |= Player.LEFT_PRESSED;
+        if (self._inputBuffer._rightPressed) keystate |= Player.RIGHT_PRESSED;
+        if (self._inputBuffer._upPressed)    keystate |= Player.UP_PRESSED;
+        if (self._inputBuffer._downPressed)  keystate |= Player.DOWN_PRESSED;
         self._client.setKeystate(keystate);
       }
     }
@@ -365,6 +357,7 @@ Game.prototype._broadcastClientState = function() {
 
 Game.prototype._clearClientKeystate = function() {
   var self = this;
+  self._inputBuffer.reset();
   if (0 !== self._client.getKeystate()) {
     self._client.setKeystate(0);
     self._broadcastClientState();
@@ -375,27 +368,3 @@ Game.prototype._selectInputPressed = function() {
   var self = this;
   return self._game.input.keyboard.isDown(Phaser.Keyboard.T);
 };
-
-Game.prototype._leftPressed = function() {
-  var self = this;
-  return self._cursors.left.isDown
-    || self._game.input.keyboard.isDown(Phaser.Keyboard.H);
-}
-
-Game.prototype._rightPressed = function() {
-  var self = this;
-  return self._cursors.right.isDown
-    || self._game.input.keyboard.isDown(Phaser.Keyboard.L);
-}
-
-Game.prototype._upPressed = function() {
-  var self = this;
-  return self._cursors.up.isDown
-    || self._game.input.keyboard.isDown(Phaser.Keyboard.K);
-}
-
-Game.prototype._downPressed = function() {
-  var self = this;
-  return self._cursors.down.isDown
-    || self._game.input.keyboard.isDown(Phaser.Keyboard.J);
-}
