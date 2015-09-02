@@ -16,6 +16,7 @@ function InputBuffer(game, options) {
   self._game = game;
 
   self._buffer = [];
+  self.captureKeycodes = false;
 
   self._leftPressed  = false;
   self._rightPressed = false;
@@ -70,6 +71,7 @@ InputBuffer.prototype.setJumpKey = function(keycode) {
   if (self._jumpButton)
     self._jumpButton.reset(true);
   self._jumpButton = self._game.input.keyboard.addKey(keycode);
+  self._game.input.keyboard.removeKeyCapture(keycode);
   self._jumpButton.onDown.add(self._onJumpPressed, this);
 };
 
@@ -78,6 +80,7 @@ InputBuffer.prototype.setPunchKey = function(keycode) {
   if (self._punchButton)
     self._punchButton.reset(true);
   self._punchButton = self._game.input.keyboard.addKey(keycode);
+  self._game.input.keyboard.removeKeyCapture(keycode);
   self._punchButton.onDown.add(self._onPunchPressed, this);
 };
 
@@ -86,6 +89,7 @@ InputBuffer.prototype.setKickKey = function(keycode) {
   if (self._kickButton)
     self._kickButton.reset(true);
   self._kickButton = self._game.input.keyboard.addKey(keycode);
+  self._game.input.keyboard.removeKeyCapture(keycode);
   self._kickButton.onDown.add(self._onKickPressed, this);
 };
 
@@ -94,6 +98,7 @@ InputBuffer.prototype.setSpecialKey = function(keycode) {
   if (self._specialButton)
     self._specialButton.reset(true);
   self._specialButton = self._game.input.keyboard.addKey(keycode);
+  self._game.input.keyboard.removeKeyCapture(keycode);
   self._specialButton.onDown.add(self._onSpecialPressed, this);
 };
 
