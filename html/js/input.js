@@ -15,7 +15,6 @@ function InputBuffer(game, options) {
   }
   self._game = game;
 
-
   self._buffer = [];
 
   self._leftPressed  = false;

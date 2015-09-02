@@ -13,6 +13,7 @@ Player.FACING_LEFT = 1 << 12;
 // other shared attributes
 Player.START_POS = {x: 256, y: 220}; // temp
 Player.HALF_GRAVITY = 300;
+Player.MAX_INPUT_BUF = 5;
 
 
 function Player(game, options) {
@@ -127,7 +128,22 @@ function Player(game, options) {
   self._stateStartPosition = position;
   self._currentAnimation = null;
 
+  // input buffering only used by client
+  self._inputBuffer = [];
 }
+
+Player.prototype.pushInput = function(buffer) {
+  var self = this;
+  for (var ii = 0; ii < buffer.length; ii++) {
+    self._inputBuffer.push(buffer[ii]);
+    if (self._inputBuffer.length > Player.MAX_INPUT_BUF)
+      self._inputBuffer.shift();
+  }
+};
+
+Player.prototype.pullInput = function() {
+  return this._inputBuffer.shift();
+};
 
 Player.prototype.cameraFollow = function(game) {
   var self = this;
@@ -637,7 +653,7 @@ Max.IDLING  = 0;
 Max.WALKING = 1;
 Max.JUMPING = 2;
 // constants
-Max.SPEED = 170;
+Max.SPEED = 400;
 Max.CROUCH_TIME = 50; // ms
 Max.JUMP_VELOCITY = -400;
 Max.TEXT_OFFSET_X = 0;
@@ -695,37 +711,14 @@ function Max(game, options) {
 
 }
 
-Max.prototype._clearState = function() {
-  var self = this;
-  self._lockSpriteToBody = true;
-  self._shadow.visible = false;
-  self._textOffset = {x: Max.TEXT_OFFSET_X, y: Max.TEXT_OFFSET_Y};
-};
-
 Max.prototype.canMove = function() {
   var self = this;
   return (self._state <= Max.WALKING);
 };
 
-Max.prototype._setState = function(state) {
+Max.prototype.canJump = function() {
   var self = this;
-
-  switch (state) {
-    case Max.IDLING: self._setIdling(); break;
-    case Max.WALKING: self._setWalking(); break;
-    case Max.JUMPING: self._setJumping(); break;
-    default: console.log('unknown state: ' + state); 
-  }
-
-};
-
-Max.prototype._setNextState = function() {
-  var self = this;
-  if (self._isMovingHorizontally() || self._isMovingVertically()) {
-    self._setWalking();
-  } else {
-    self._setIdling();
-  }
+  return (self._state <= Max.WALKING);
 };
 
 Max.prototype._setIdling = function() {
@@ -771,8 +764,53 @@ Max.prototype._setJumping = function() {
   }
 };
 
+Max.prototype._clearState = function() {
+  var self = this;
+  self._lockSpriteToBody = true;
+  self._shadow.visible = false;
+  self._textOffset = {x: Max.TEXT_OFFSET_X, y: Max.TEXT_OFFSET_Y};
+};
+
+Max.prototype._setState = function(state) {
+  var self = this;
+
+  switch (state) {
+    case Max.IDLING: self._setIdling(); break;
+    case Max.WALKING: self._setWalking(); break;
+    case Max.JUMPING: self._setJumping(); break;
+    default: console.log('unknown state: ' + state); 
+  }
+
+};
+
+Max.prototype._setNextState = function() {
+  var self = this;
+
+  if (self._isMovingHorizontally() || self._isMovingVertically()) {
+    self._setWalking();
+  } else {
+    self._setIdling();
+  }
+
+};
+
+
 Max.prototype._update = function(time) {
   var self = this;
+
+  if (self._isClient) {
+    var input = self.pullInput() || {};
+    switch (input.type) {
+      case 'jump':
+        if (self.canJump())
+          self._setJumping();
+        return;
+      case 'punch':
+      case 'kick':
+      case 'special':
+      default: // unknown
+    }
+  }
 
   // clear velocity
   self._worldBody.velocity.x = 0;

@@ -333,6 +333,9 @@ Game.prototype._updateClient = function(time) {
         if (self._inputBuffer._downPressed)  keystate |= Player.DOWN_PRESSED;
         self._client.setKeystate(keystate);
       }
+      // push user commands
+      self._client.pushInput(self._inputBuffer._buffer);
+      self._inputBuffer._buffer = [];
     }
   }
 
