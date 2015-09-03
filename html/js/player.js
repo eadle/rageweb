@@ -13,8 +13,6 @@ Player.FACING_LEFT = 1 << 12;
 // other shared attributes
 Player.START_POS = {x: 256, y: 220}; // temp
 Player.HALF_GRAVITY = 300;
-Player.MAX_INPUT_BUF = 5;
-
 
 function Player(game, options) {
   var self = this;
@@ -120,29 +118,25 @@ function Player(game, options) {
   self._keystate = 0;
   self._direction = 0;
   self._lastState = self._state;
-  self._lastKeystate = self._keystate;
   self._lastDirection = self._direction;
 
-  // state helper variables
-  self._stateStartTime = new Date().getTime();
-  self._stateStartPosition = position;
-  self._currentAnimation = null;
+  // client uses input events
+  self._input = (self._isClient) ? new PlayerInput(self._game, self) : null;
 
-  // input buffering only used by client
-  self._inputBuffer = [];
 }
 
-Player.prototype.pushInput = function(buffer) {
+Player.prototype.blur = function() {
   var self = this;
-  for (var ii = 0; ii < buffer.length; ii++) {
-    self._inputBuffer.push(buffer[ii]);
-    if (self._inputBuffer.length > Player.MAX_INPUT_BUF)
-      self._inputBuffer.shift();
+  if (self._input) {
+    self._input.blur();
   }
 };
 
-Player.prototype.pullInput = function() {
-  return this._inputBuffer.shift();
+Player.prototype.focus = function() {
+  var self = this;
+  if (self._input) {
+    self._input.focus();
+  }
 };
 
 Player.prototype.cameraFollow = function(game) {
@@ -209,15 +203,6 @@ Player.prototype.changedDirection = function() {
   return false;
 };
 
-Player.prototype.changedKeystate = function() {
-  var self = this;
-  if (self._lastKeystate !== self._keystate) {
-    self._lastKeystate = self._keystate;
-    return true;
-  }
-  return false;
-};
-
 Player.prototype.changedState = function() {
   var self = this;
   if (self._lastState !== self._state) {
@@ -229,7 +214,7 @@ Player.prototype.changedState = function() {
 
 Player.prototype.needsBroadcast = function() {
   var self = this;
-  return self.changedState() || self.changedKeystate() || self.changedDirection();
+  return self.changedState() || self.changedDirection();
 };
 
 Player.prototype._faceLeft = function() {
@@ -249,14 +234,7 @@ Player.prototype.getKeystate = function() {
 };
 
 Player.prototype.setKeystate = function(keystate) {
-  var self = this;
-  // only set keystate if it changed
-  if (keystate !== self._keystate) {
-    self._keystate = keystate;
-    if (self.canMove()) {
-      self._setNextState();
-    }
-  };
+  this._keystate = keystate;
 };
 
 Player.prototype.getState = function() {
@@ -369,6 +347,13 @@ Player.prototype._updateSprites = function() {
 
 };
 
+Player.prototype._preUpdate = function() {
+  var self = this;
+  // clear velocity
+  self._worldBody.velocity.x = 0;
+  self._worldBody.velocity.y = 0;
+};
+
 Player.prototype._postUpdate = function() {
   var self = this;
   self._updateSprites();
@@ -384,13 +369,10 @@ Player.prototype.update = function(time) {
 };
 
 // Override these
-Player.prototype.canMove = function() { return true; };
-Player.prototype._preUpdate = function() {};
 Player.prototype._update = function(time) {};
 Player.prototype._setState = function(state) {};
 Player.prototype._setNextState = function() {};
 Player.prototype._collisionCallback = function(bodyA, bodyB) {};
-
 
 Player.prototype._isMovingHorizontally = function() {
   var self = this;
@@ -410,14 +392,14 @@ Player.prototype._isMovingVertically = function() {
 Vice.prototype = Object.create(Player.prototype);
 Vice.constructor = Vice;
 
-Vice.IDLING      = 0;
-Vice.WALKING     = 1;
-Vice.PUNCHING    = 2;
-Vice.HEADBUTTING = 3;
+Vice.IDLE      = 0;
+Vice.WALK     = 1;
+Vice.PUNCH    = 2;
+Vice.HEADBUTT = 3;
 Vice.DAMAGED     = 4;
-Vice.FALLING     = 5;
-Vice.RECOVERING  = 6;
-Vice.GHOSTING    = 7;
+Vice.FALL     = 5;
+Vice.RECOVER  = 6;
+Vice.GHOST    = 7;
 Vice.DAMAGE_TIME = 150; // ms
 Vice.PUNCH_TIME  = 100;  // ms
 Vice.SPEED = 180;
@@ -463,17 +445,22 @@ function Vice(game, options) {
   if (typeof options.state === 'number') {
     self.setState(options.state);
   } else {
-    self._setState(Vice.IDLING);
+    self._setState(Vice.IDLE);
   }
 
   // custom attributes
   self._timesHit = 0;
 
+  // state helper variables
+  self._stateStartTime = new Date().getTime();
+  self._stateStartPosition = position;
+  self._currentAnimation = null;
+
 };
 
 Vice.prototype.canMove = function() {
   var self = this;
-  return (self._state <= Vice.WALKING);
+  return (self._state <= Vice.WALK);
 };
 
 Vice.prototype._collisionCallback = function(bodyA, bodyB) {
@@ -494,13 +481,13 @@ Vice.prototype._setNextState = function() {
 
 Vice.prototype._setIdling = function() {
   var self = this;
-  self._state = Vice.IDLING;
+  self._state = Vice.IDLE;
   self._currentAnimation = self._sprite.animations.play('idle');
 };
 
 Vice.prototype._setWalking = function() {
   var self = this;
-  self._state = Vice.WALKING;
+  self._state = Vice.WALK;
   // face sprite in moving direction
   if (self._keystate & Player.LEFT_PRESSED) {
     self._faceLeft();
@@ -512,8 +499,8 @@ Vice.prototype._setWalking = function() {
 
 Vice.prototype._setPunching = function() {
   var self = this;
-  if (self._state <= Vice.WALKING) {
-    self._state = Vice.PUNCHING;
+  if (self._state <= Vice.WALK) {
+    self._state = Vice.PUNCH;
     self._stateStartTime = new Date().getTime();
     self._sprite.animations.stop();
     self._sprite.frameName = 'punch';
@@ -522,13 +509,13 @@ Vice.prototype._setPunching = function() {
 
 Vice.prototype._setHeadbutting = function() {
   var self = this;
-  self._state = Vice.HEADBUTTING;
+  self._state = Vice.HEADBUTT;
   self._stateStartTime = new Date().getTime();
 };
 
 Vice.prototype.hit = function(damage) {
   var self = this;
-  if (self._state <= Vice.WALKING) {
+  if (self._state <= Vice.WALK) {
     self._timesHit += 1;
     if (self._timesHit < 3) {
       self.setDamaged();
@@ -549,7 +536,7 @@ Vice.prototype.setDamaged = function() {
 
 Vice.prototype._setFalling = function() {
   var self = this;
-  self._state = Vice.FALLING;
+  self._state = Vice.FALL;
   self._shadow.visible = true;
   self._stateStartTime = new Date().getTime();
   self._stateStartPosition = { 
@@ -563,7 +550,7 @@ Vice.prototype._setFalling = function() {
 
 Vice.prototype._setRecovering = function() {
   var self = this;
-  self._state = Vice.RECOVERING;
+  self._state = Vice.RECOVER;
   self._shadow.visible = false;
   self._lockSpriteToBody = true;
   self._currentAnimation = self._sprite.animations.play('recover');
@@ -578,14 +565,14 @@ Vice.prototype._setState = function(state) {
   var self = this;
 
   switch (state) {
-    case Vice.IDLING: self._setIdling(); break;
-    case Vice.WALKING: self._setWalking(); break;
-    case Vice.PUNCHING: self._setPunching(); break;
-    case Vice.HEADBUTTING: self._setHeadbutting(); break;
+    case Vice.IDLE: self._setIdling(); break;
+    case Vice.WALK: self._setWalking(); break;
+    case Vice.PUNCH: self._setPunching(); break;
+    case Vice.HEADBUTT: self._setHeadbutting(); break;
     case Vice.DAMAGED: self.setDamaged(); break;
-    case Vice.FALLING: self._setFalling(); break;
-    case Vice.RECOVERING: self._setRecovering(); break;
-    case Vice.GHOSTING: self._setGhosting(); break;
+    case Vice.FALL: self._setFalling(); break;
+    case Vice.RECOVER: self._setRecovering(); break;
+    case Vice.GHOST: self._setGhosting(); break;
     default: console.log('unknown state: ' + state); 
   }
 
@@ -600,7 +587,7 @@ Vice.prototype._update = function(time) {
   self._worldBody.velocity.y = 0;
 
   switch (self._state) {
-    case Vice.WALKING:
+    case Vice.WALK:
       var dx = Vice.SPEED,
           dy = Vice.SPEED/2;
       if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
@@ -615,7 +602,7 @@ Vice.prototype._update = function(time) {
         self._setNextState();
       }
       break;
-    case Vice.FALLING:
+    case Vice.FALL:
       var t = (time - self._stateStartTime)/1000,
           v0y = -200,
           g = 500;
@@ -628,12 +615,12 @@ Vice.prototype._update = function(time) {
         self._setRecovering();
       }
       break;
-    case Vice.RECOVERING:
+    case Vice.RECOVER:
       if (!self._currentAnimation.isPlaying) {
         self._setNextState();
       }
       break;
-    case Vice.PUNCHING:
+    case Vice.PUNCH:
       var dt = time  - self._stateStartTime;
       if (dt >= Vice.PUNCH_TIME) {
         self._setNextState();
@@ -649,9 +636,25 @@ Max.prototype = Object.create(Player.prototype);
 Max.constructor = Max;
 
 // states
-Max.IDLING  = 0;
-Max.WALKING = 1;
-Max.JUMPING = 2;
+Max.IDLE               = 0;
+Max.WALK               = 1;
+Max.JUMP               = 2;
+Max.CHOP               = 3;
+Max.ELBOW_SMASH        = 4;
+Max.HIGH_KICK          = 5;
+Max.HAMMER_PUNCH       = 6;
+Max.POWER_SLIDE        = 7;
+Max.MULE_KICK          = 8;
+Max.SUPER_HAMMER_PUNCH = 9;
+Max.DROP_KICK          = 10;
+Max.ELBOW_DROP         = 11;
+Max.BEAR_PUNCH         = 12;
+Max.BRAIN_BUSTER       = 13;
+Max.THUNDER_BODY_SLAM  = 14;
+Max.THUNDER_TACKLE     = 15;
+Max.DAMAGED            = 16;
+Max.FALL               = 17;
+Max.RECOVER            = 18;
 // constants
 Max.SPEED = 400;
 Max.CROUCH_TIME = 50; // ms
@@ -698,7 +701,7 @@ function Max(game, options) {
   if (typeof options.state === 'number') {
     self.setState(options.state);
   } else {
-    self._setState(Max.IDLING);
+    self._setState(Max.IDLE);
   }
 
   // jump substates (crouch=0, jump=1, land=2)
@@ -709,115 +712,145 @@ function Max(game, options) {
   self._velocityOnJump = {x: 0, y: 0};
   self._positionOnJump = {x: 0, y: 0};
 
+  // state helper variables
+  self._stateStartTime = new Date().getTime();
+  self._stateStartPosition = position;
+  self._currentAnimation = null;
+
 }
-
-Max.prototype.canMove = function() {
-  var self = this;
-  return (self._state <= Max.WALKING);
-};
-
-Max.prototype.canJump = function() {
-  var self = this;
-  return (self._state <= Max.WALKING);
-};
-
-Max.prototype._setIdling = function() {
-  var self = this;
-  self._clearState();
-  self._state = Max.IDLING;
-  self._currentAnimation = self._sprite.animations.play('idle');
-};
-
-Max.prototype._setWalking = function() {
-  var self = this;
-  self._clearState();
-  self._state = Max.WALKING;
-  // face sprite in moving direction
-  if (self._keystate & Player.LEFT_PRESSED) {
-    self._faceLeft();
-  } else if (self._keystate & Player.RIGHT_PRESSED) {
-    self._faceRight();
-  }
-  self._currentAnimation = self._sprite.animations.play('walk');
-};
-
-Max.prototype._setJumping = function() {
-  var self = this;
-  if (self._state <= Max.WALKING) {
-    self._clearState();
-    self._state = Max.JUMPING;
-
-    self._sprite.animations.stop();
-    self._sprite.frameName = 'jump-0';
-    self._lockSpriteToBody = false;
-
-    self._jumpState = 0;
-    self._crouchTime = new Date().getTime();
-    self._positionOnJump = { 
-      x: self._sprite.x,
-      y: self._sprite.y
-    };  
-    self._velocityOnJump = {
-      x: self._worldBody.velocity.x,
-      y: self._worldBody.velocity.y
-    };
-  }
-};
 
 Max.prototype._clearState = function() {
   var self = this;
   self._lockSpriteToBody = true;
   self._shadow.visible = false;
   self._textOffset = {x: Max.TEXT_OFFSET_X, y: Max.TEXT_OFFSET_Y};
+
 };
 
 Max.prototype._setState = function(state) {
   var self = this;
 
+  self._clearState();
+
   switch (state) {
-    case Max.IDLING: self._setIdling(); break;
-    case Max.WALKING: self._setWalking(); break;
-    case Max.JUMPING: self._setJumping(); break;
-    default: console.log('unknown state: ' + state); 
+    case Max.IDLE:
+      console.log('set state: idle');
+      self._state = Max.IDLE;
+      self._currentAnimation = self._sprite.animations.play('idle');
+      break;
+    case Max.WALK:
+
+      console.log('set state: walk');
+      self._state = Max.WALK;
+      // face sprite in moving direction
+      if (self._keystate & Player.LEFT_PRESSED) {
+        self._faceLeft();
+      } else if (self._keystate & Player.RIGHT_PRESSED) {
+        self._faceRight();
+      }
+      self._currentAnimation = self._sprite.animations.play('walk');
+
+      break;
+    case Max.JUMP:
+
+      console.log('set state: jump');
+      self._state = Max.JUMP;
+      self._sprite.animations.stop();
+      self._sprite.frameName = 'jump-0';
+      self._lockSpriteToBody = false;
+      self._jumpState = 0;
+      self._crouchTime = new Date().getTime();
+      self._positionOnJump = { 
+        x: self._sprite.x,
+        y: self._sprite.y
+      };  
+      self._velocityOnJump = {
+        x: self._worldBody.velocity.x,
+        y: self._worldBody.velocity.y
+      };
+
+      break;
+    default:
+      // FIXME
+      console.log('set state: UNKNOWN'); 
   }
 
 };
-
-Max.prototype._setNextState = function() {
-  var self = this;
-
-  if (self._isMovingHorizontally() || self._isMovingVertically()) {
-    self._setWalking();
-  } else {
-    self._setIdling();
-  }
-
-};
-
 
 Max.prototype._update = function(time) {
   var self = this;
 
-  if (self._isClient) {
-    var input = self.pullInput() || {};
-    switch (input.type) {
-      case 'jump':
-        if (self.canJump())
-          self._setJumping();
-        return;
-      case 'punch':
-      case 'kick':
-      case 'special':
-      default: // unknown
-    }
+  if (self._input) {
+    self._input.debugMovement(); 
   }
+
+  switch (self._state) {
+    case Max.IDLE:
+      if (self._input.buffer.length > 0) {
+        var buttonPressed = self._state.buffer.shift();
+        switch (buttonPressed) {
+          case 'A':
+            /* TODO stationary attack */
+            break;
+          case 'B':
+            self._setState(Max.CHOP);
+            break;
+          case 'C':
+            self._setState(Max.JUMP);
+            break;
+          default:
+        }
+      } else if (self._keystate !== 0) {
+        self._setState(Max.WALK);
+      }
+      break;
+    case Max.WALK:
+      if (self._input.buffer.length > 0) {
+        var buttonPressed = self._state.buffer.shift();
+        switch (buttonPressed) {
+          case 'A':
+            /* TODO stationary attack */
+            break;
+          case 'B':
+            self._setState(Max.CHOP);
+            break;
+          case 'C':
+            self._setState(Max.JUMP);
+            break;
+          default:
+        }
+      } else if (self._keystate !== 0) {
+        console.log('move pls');
+        var dx = Max.SPEED,
+            dy = Max.SPEED/2;
+        if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
+        if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
+        if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
+        if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
+        if (self._worldBody.velocity.x < 0) self._faceLeft();
+        if (self._worldBody.velocity.x > 0) self._faceRight();
+      } else {
+        self._setState(Max.IDLE);
+      }
+      break;
+    case Max.JUMP:
+      break;
+    case Max.CHOP:
+      break;
+  }
+
+};
+
+/*
+Max.prototype._update = function(time) {
+  var self = this;
 
   // clear velocity
   self._worldBody.velocity.x = 0;
   self._worldBody.velocity.y = 0;
 
   switch (self._state) {
-    case Max.WALKING:
+    case Max.WALK:
       var dx = Max.SPEED,
           dy = Max.SPEED/2;
       if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
@@ -825,7 +858,7 @@ Max.prototype._update = function(time) {
       if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
       if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
       break;
-    case Max.JUMPING:
+    case Max.JUMP:
 
       if (self._jumpState > 0) {
         self._worldBody.velocity.x = self._velocityOnJump.x;
@@ -870,4 +903,6 @@ Max.prototype._update = function(time) {
       break;
     default:
   }
+
 }
+*/

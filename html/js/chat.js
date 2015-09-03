@@ -117,14 +117,14 @@ Chat.prototype.appendSessionMessage = function(message) {
   self._scrollOrRoll();
 };
 
-Chat.prototype.gainFocus = function() {
+Chat.prototype.focus = function() {
   var self = this;
   self._hasClientFocus = true;
   self._unseenMessages = 0;
   document.title = self._originalTitle;
 };
 
-Chat.prototype.loseFocus = function() {
+Chat.prototype.blur = function() {
   var self = this;
   self._hasClientFocus = false;
 };

@@ -1,205 +1,156 @@
 'use strict';
 
-InputBuffer.JUMP_BIT      = 1 << 0;
-InputBuffer.PUNCH_BIT     = 1 << 1;
-InputBuffer.KICK_BIT      = 1 << 2;
-InputBuffer.SPECIAL_BIT   = 1 << 3;
-InputBuffer.MAX_BUFFER_LENGTH = 5;
+PlayerInput.BUTTON_A_KEY = Phaser.Keyboard.D;
+PlayerInput.BUTTON_B_KEY = Phaser.Keyboard.F;
+PlayerInput.BUTTON_C_KEY = Phaser.Keyboard.SPACEBAR;
 
-function InputBuffer(game, options) {
+PlayerInput.LEFT_KEY = Phaser.Keyboard.LEFT;
+PlayerInput.RIGHT_KEY = Phaser.Keyboard.RIGHT;
+PlayerInput.UP_KEY = Phaser.Keyboard.UP;
+PlayerInput.DOWN_KEY = Phaser.Keyboard.DOWN;
+
+function PlayerInput(game, player, options) {
   var self = this;
   options = options || {};
 
   if (typeof game !== 'object') {
-    throw new Error('Input buffer expects game context:' + game);
+    throw new Error('Player input expects game context: ' + game);
   }
   self._game = game;
 
-  self._buffer = [];
-  self.captureKeycodes = false;
+  if (typeof player !== 'object') {
+    throw new Error('Player input expects player context: ' + player);
+  }
+  self._player = player;
 
-  self._leftPressed  = false;
-  self._rightPressed = false;
-  self._upPressed    = false;
-  self._downPressed  = false;
+  self.buffer = [];
 
-  self._jumpButton    = null;
-  self._punchButton   = null;
-  self._kickButton    = null;
-  self._specialButton = null;
+  // self._aButton = null;
+  // self._bButton = null;
+  // self._cButton = null;
 
-  self._leftButton   = null;
-  self._rightButton  = null;
-  self._upButton     = null;
-  self._downButton   = null;
-
-  self.setJumpKey(options.jumpKey || Phaser.Keyboard.SPACEBAR);
-  self.setPunchKey(options.punchKey || Phaser.Keyboard.S);
-  self.setKickKey(options.kickKey || Phaser.Keyboard.D);
-  self.setSpecialKey(options.specialKey || Phaser.Keyboard.F);
-
-  self.setLeftKey(options.leftKey || Phaser.Keyboard.LEFT);
-  self.setRightKey(options.rightKey || Phaser.Keyboard.RIGHT);
-  self.setUpKey(options.upKey || Phaser.Keyboard.UP);
-  self.setDownKey(options.downKey || Phaser.Keyboard.DOWN);
+  self._leftButton = null;
+  self._rightButton = null;
+  self._downButton = null;
+  self._upButton = null;
+  self.setLeftKey(PlayerInput.LEFT_KEY);
+  self.setRightKey(PlayerInput.RIGHT_KEY);
+  self.setDownKey(PlayerInput.DOWN_KEY);
+  self.setUpKey(PlayerInput.UP_KEY);
 
 }
 
-InputBuffer.prototype.reset = function() {
+PlayerInput.prototype.debugMovement = function() {
   var self = this;
-  // clear input buffer
-  self._buffer = [];
-  // no movement keys pressed
-  self._leftPressed  = false;
-  self._rightPressed = false;
-  self._upPressed    = false;
-  self._downPressed  = false;
-  // soft reset on movement keys
+  var output = '';
+  if (self.leftPressed) output += '◄';
+  if (self.downPressed && self.upPressed) {
+    output += '♦';
+  } else {
+    if (self.downPressed) output += '▼';
+    if (self.upPressed) output += '▲';
+  }
+  if (self.rightPressed) output += '►';
+
+
+  if (output !== '') {
+    console.log('movement state: ' + output);
+  }
+};
+
+PlayerInput.prototype.blur = function() {
+  var self = this;
+
+  // clear key states
+  self.buffer = [];
+
+  // soft reset on all buttons
+  // self._aButton.reset(false);
+  // self._bButton.reset(false);
+  // self._cButton.reset(false);
   self._leftButton.reset(false);
   self._rightButton.reset(false);
-  self._upButton.reset(false);
   self._downButton.reset(false);
-  // soft reset on action keys
-  self._jumpButton.reset(false);
-  self._punchButton.reset(false);
-  self._kickButton.reset(false);
-  self._specialButton.reset(false);
+  self._upButton.reset(false);
+
 };
 
-InputBuffer.prototype.setJumpKey = function(keycode) {
-  var self = this;
-  if (self._jumpButton)
-    self._jumpButton.reset(true);
-  self._jumpButton = self._game.input.keyboard.addKey(keycode);
-  self._game.input.keyboard.removeKeyCapture(keycode);
-  self._jumpButton.onDown.add(self._onJumpPressed, this);
+PlayerInput.prototype.focus = function() {
+
 };
 
-InputBuffer.prototype.setPunchKey = function(keycode) {
+PlayerInput.prototype.setLeftKey = function(keycode) {
   var self = this;
-  if (self._punchButton)
-    self._punchButton.reset(true);
-  self._punchButton = self._game.input.keyboard.addKey(keycode);
-  self._game.input.keyboard.removeKeyCapture(keycode);
-  self._punchButton.onDown.add(self._onPunchPressed, this);
-};
 
-InputBuffer.prototype.setKickKey = function(keycode) {
-  var self = this;
-  if (self._kickButton)
-    self._kickButton.reset(true);
-  self._kickButton = self._game.input.keyboard.addKey(keycode);
-  self._game.input.keyboard.removeKeyCapture(keycode);
-  self._kickButton.onDown.add(self._onKickPressed, this);
-};
-
-InputBuffer.prototype.setSpecialKey = function(keycode) {
-  var self = this;
-  if (self._specialButton)
-    self._specialButton.reset(true);
-  self._specialButton = self._game.input.keyboard.addKey(keycode);
-  self._game.input.keyboard.removeKeyCapture(keycode);
-  self._specialButton.onDown.add(self._onSpecialPressed, this);
-};
-
-InputBuffer.prototype._onJumpPressed = function() {
-  var self = this;
-  self._buffer.push({
-    type: 'jump',
-    //time: new Date().getTime()
-  });
-  if (self._buffer.length > InputBuffer.MAX_BUFFER_LENGTH) {
-    self._buffer.shift();
-  }
-  console.log(JSON.stringify(self._buffer));
-};
-
-InputBuffer.prototype._onPunchPressed = function() {
-  var self = this;
-  self._buffer.push({
-    type: 'punch',
-    //time: new Date().getTime()
-  });
-  if (self._buffer.length > InputBuffer.MAX_BUFFER_LENGTH) {
-    self._buffer.shift();
-  }
-  console.log(JSON.stringify(self._buffer));
-};
-
-InputBuffer.prototype._onKickPressed = function() {
-  var self = this;
-  self._buffer.push({
-    type: 'kick',
-    //time: new Date().getTime()
-  });
-  if (self._buffer.length > InputBuffer.MAX_BUFFER_LENGTH) {
-    self._buffer.shift();
-  }
-  console.log(JSON.stringify(self._buffer));
-};
-
-InputBuffer.prototype._onSpecialPressed = function() {
-  var self = this;
-  self._buffer.push({
-    type: 'special',
-    //time: new Date().getTime()
-  });
-  if (self._buffer.length > InputBuffer.MAX_BUFFER_LENGTH) {
-    self._buffer.shift();
-  }
-  console.log(JSON.stringify(self._buffer));
-};
-
-
-InputBuffer.prototype.setLeftKey = function(keycode) {
-  var self = this;
-  if (self._leftButton)
+  if (self._leftButton) {
     self._leftButton.reset(true);
+  }
+
   self._leftButton = self._game.input.keyboard.addKey(keycode);
+
   self._leftButton.onDown.add(function() {
-    self._leftPressed = true;
-  }, this);
+    this._player._keystate |= Player.LEFT_PRESSED;
+  }, self);
+
   self._leftButton.onUp.add(function() {
-    self._leftPressed = false;
-  }, this);
+    this._player._keystate ^= Player.LEFT_PRESSED;
+  }, self);
+
 };
 
-InputBuffer.prototype.setRightKey = function(keycode) {
+PlayerInput.prototype.setRightKey = function(keycode) {
   var self = this;
-  if (self._rightButton)
+
+  if (self._rightButton) {
     self._rightButton.reset(true);
+  }
+
   self._rightButton = self._game.input.keyboard.addKey(keycode);
+
   self._rightButton.onDown.add(function() {
-    self._rightPressed = true;
-  }, this);
+    this._player._keystate |= Player.RIGHT_PRESSED;
+  }, self);
+
   self._rightButton.onUp.add(function() {
-    self._rightPressed = false;
-  }, this);
+    this._player._keystate ^= Player.RIGHT_PRESSED;
+  }, self);
+
 };
 
-
-InputBuffer.prototype.setUpKey = function(keycode) {
+PlayerInput.prototype.setDownKey = function(keycode) {
   var self = this;
-  if (self._upButton)
-    self._upButton.reset(true);
-  self._upButton = self._game.input.keyboard.addKey(keycode);
-  self._upButton.onDown.add(function() {
-    self._upPressed = true;
-  }, this);
-  self._upButton.onUp.add(function() {
-    self._upPressed = false;
-  }, this);
-};
 
-InputBuffer.prototype.setDownKey = function(keycode) {
-  var self = this;
-  if (self._downButton)
+  if (self._downButton) {
     self._downButton.reset(true);
+  }
+
   self._downButton = self._game.input.keyboard.addKey(keycode);
+
   self._downButton.onDown.add(function() {
-    self._downPressed = true;
-  }, this);
+    this._player._keystate |= Player.DOWN_PRESSED;
+  }, self);
+
   self._downButton.onUp.add(function() {
-    self._downPressed = false;
-  }, this);
+    this._player._keystate ^= Player.DOWN_PRESSED;
+  }, self);
+
+};
+
+PlayerInput.prototype.setUpKey = function(keycode) {
+  var self = this;
+
+  if (self._upButton) {
+    self._upButton.reset(true);
+  }
+
+  self._upButton = self._game.input.keyboard.addKey(keycode);
+
+  self._upButton.onDown.add(function() {
+    this._player._keystate |= Player.UP_PRESSED;
+  }, self);
+
+  self._upButton.onUp.add(function() {
+    this._player._keystate ^= Player.UP_PRESSED;
+  }, self);
+
 };

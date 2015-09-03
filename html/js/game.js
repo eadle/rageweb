@@ -51,7 +51,7 @@ function Game(options) {
       self._game.load.image('subway', 'assets/levels/subway32.png');
       // UI callbacks
       self._setupCanvasScaling();
-      self._setupDispatchEvents();
+      self._setupWindowEvents();
     },
     create: function() {
       // connect to server and initialize chat
@@ -89,7 +89,7 @@ function Game(options) {
         playerCollisionGroup: self._playerCollisionGroup,
         hitboxCollisionGroup: self._hitboxCollisionGroup,
         attackCollisionGroup: self._attackCollisionGroup,
-        debug: Game.DEBUGGING
+        debug: true
       });
 
       // add collision layer to physics world
@@ -99,9 +99,6 @@ function Game(options) {
         self._worldCollisionObjects[ii].setCollisionGroup(self._worldCollisionGroup);
         self._worldCollisionObjects[ii].collides([self._playerCollisionGroup]);
       }   
-
-      // using cursor input
-      self._inputBuffer = new InputBuffer(self._game);
 
       // resize chat
       self._resizeChat();
@@ -130,43 +127,28 @@ function Game(options) {
 
 }
 
-Game.prototype._setupCanvasScaling = function() {
+Game.prototype._setupWindowEvents = function() {
   var self = this;
 
-  self._game.scale.minWidth  = Game.WIDTH;
-  self._game.scale.minHeight = Game.HEIGHT;
-  self._game.scale.maxWidth  = 2*Game.WIDTH;
-  self._game.scale.maxHeight = 2*Game.HEIGHT;
-  self._game.scale.pageAlignHorizontally = true;
-  self._game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
-
-  window.onresize = function() {
-    self._resizeChat();
-  };
-
-};
-
-Game.prototype._resizeChat = function() {
-  var self = this;
-  var width = (window.innerWidth > 2*Game.WIDTH) ? 2*Game.WIDTH :
-    (window.innerWidth < Game.WIDTH) ? Game.WIDTH : window.innerWidth;
-  self._chat.resize(width/Game.ASPECT);
-};
-
-/* An ugly function to make the game pretty. */
-Game.prototype._setupDispatchEvents = function() {
-  var self = this;
-  // on lost focus
+  // on game blur
   self._game.onBlur.dispatch = function() {
-    self._chat.loseFocus();
+    self._chat.blur();
     if (self._client) {
-      self._clearClientKeystate();
+      self._client.blur();
+      if (self._client.needsBroadcast()) {
+        self._broadcastClientState();
+      }
     }   
   };
-  // on gained focus
+
+  // on game focus
   self._game.onFocus.dispatch = function() {
-    self._chat.gainFocus();
+    self._chat.focus();
+    if (self._client) {
+      self._client.focus();
+    }
   };
+
   // on game resize
   self._game.scale.onSizeChange.dispatch = function() {
     self._canvasElement.style.cssText =
@@ -186,13 +168,23 @@ Game.prototype._setupDispatchEvents = function() {
        'image-rendering: pixelated;';
     }
   };
+
 };
 
-Game.prototype.send = function(message) {
-  var self = this;  
-  if (1 == self._ws.readyState) { // FIXME
-    self._ws.send(JSON.stringify(message));
-  }
+Game.prototype._setupCanvasScaling = function() {
+  var self = this;
+
+  self._game.scale.minWidth  = Game.WIDTH;
+  self._game.scale.minHeight = Game.HEIGHT;
+  self._game.scale.maxWidth  = 2*Game.WIDTH;
+  self._game.scale.maxHeight = 2*Game.HEIGHT;
+  self._game.scale.pageAlignHorizontally = true;
+  self._game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+
+  window.onresize = function() {
+    self._resizeChat();
+  };
+
 };
 
 Game.prototype.selectCanvas = function() {
@@ -200,80 +192,16 @@ Game.prototype.selectCanvas = function() {
   self._canvasElement.click();
 };
 
-Game.prototype._setupServerConnection = function(server) {
+Game.prototype._selectChat = function() {
   var self = this;
-
-  self._ws = new WebSocket(server);
-
-  self._ws.onmessage = function(event) {
-    //console.log('received: ' + event.data);
-    var message = JSON.parse(event.data);
-    switch (message.type) {
-      case 'handle':
-        self._addClient(message);
-        break;
-      case 'player':
-        self._addPlayer(message);
-        break;
-      case 'state':
-        var pid = message.id,
-            position = message.position,
-            state = message.state;
-        self._applyStateChange(pid, position, state);
-        break;
-      case 'chat':
-        var pid = message.id;
-        if (pid in self._players) {
-          var name = self._players[pid].getName(),
-              message = message.message;
-          self._chat.appendUserMessage(name, message);
-        }
-        break;
-      case 'disconnect':
-        var player = self._players[message.id];
-        if (player) {
-          self._chat.appendSessionMessage('['+player.getName()+' left]');
-          player.destroy();
-          delete self._players[message.id];
-        }
-        break;
-      case 'worldstate':
-        // add players to the world
-        var players = message.players;
-        if (typeof players === 'object') {
-          Object.keys(players).forEach(function(name) {
-            var player = players[name];
-            player.name = name;
-            self._addPlayer(player);
-          });
-        }
-        break;
-      case 'error':
-        console.log(event.data);
-        self._chat.setHandleField(message.error);
-        self._chat.selectInput();
-        break;
-      default:
-    }
-  };
-  self._ws.onopen = function() {
-    console.log('connected to server');
-  };
-  self._ws.onclose = function() {
-    console.log('disconnected to server');
-  };
-  self._ws.onerror = function(err) {
-    throw err;
-  };
-
+  return self._game.input.keyboard.isDown(Phaser.Keyboard.T);
 };
 
-Game.prototype._applyStateChange = function(pid, position, state) {
+Game.prototype._resizeChat = function() {
   var self = this;
-  if (pid in self._players) {
-    self._players[pid].setPosition(position);
-    self._players[pid].setState(state);
-  }
+  var width = (window.innerWidth > 2*Game.WIDTH) ? 2*Game.WIDTH :
+    (window.innerWidth < Game.WIDTH) ? Game.WIDTH : window.innerWidth;
+  self._chat.resize(width/Game.ASPECT);
 };
 
 Game.prototype._addClient = function(client) {
@@ -321,21 +249,8 @@ Game.prototype._updateClient = function(time) {
   var self = this;
 
   if (!self._chat.isSelected()) {
-    var keystate = 0;
-    if (self._selectInputPressed()) {
-      self._clearClientKeystate();
+    if (self._selectChat()) {
       self._chat.selectInput();
-    } else {
-      if (self._client.canMove()) {
-        if (self._inputBuffer._leftPressed)  keystate |= Player.LEFT_PRESSED;
-        if (self._inputBuffer._rightPressed) keystate |= Player.RIGHT_PRESSED;
-        if (self._inputBuffer._upPressed)    keystate |= Player.UP_PRESSED;
-        if (self._inputBuffer._downPressed)  keystate |= Player.DOWN_PRESSED;
-        self._client.setKeystate(keystate);
-      }
-      // push user commands
-      self._client.pushInput(self._inputBuffer._buffer);
-      self._inputBuffer._buffer = [];
     }
   }
 
@@ -358,16 +273,80 @@ Game.prototype._broadcastClientState = function() {
   }
 };
 
-Game.prototype._clearClientKeystate = function() {
-  var self = this;
-  self._inputBuffer.reset();
-  if (0 !== self._client.getKeystate()) {
-    self._client.setKeystate(0);
-    self._broadcastClientState();
+Game.prototype.send = function(message) {
+  var self = this;  
+  if (1 == self._ws.readyState) { // FIXME
+    self._ws.send(JSON.stringify(message));
   }
 };
 
-Game.prototype._selectInputPressed = function() {
+Game.prototype._setupServerConnection = function(server) {
   var self = this;
-  return self._game.input.keyboard.isDown(Phaser.Keyboard.T);
+
+  self._ws = new WebSocket(server);
+
+  self._ws.onmessage = function(event) {
+    //console.log('received: ' + event.data);
+    var message = JSON.parse(event.data);
+    switch (message.type) {
+      case 'handle':
+        self._addClient(message);
+        break;
+      case 'player':
+        self._addPlayer(message);
+        break;
+      case 'state':
+        var pid = message.id,
+            position = message.position,
+            state = message.state;
+        if (pid in self._players) {
+          self._players[pid].setPosition(position);
+          self._players[pid].setState(state);
+        }
+        break;
+      case 'chat':
+        var pid = message.id;
+        if (pid in self._players) {
+          var name = self._players[pid].getName(),
+              message = message.message;
+          self._chat.appendUserMessage(name, message);
+        }
+        break;
+      case 'disconnect':
+        var player = self._players[message.id];
+        if (player) {
+          self._chat.appendSessionMessage('['+player.getName()+' left]');
+          player.destroy();
+          delete self._players[message.id];
+        }
+        break;
+      case 'worldstate':
+        // add players to the world
+        var players = message.players;
+        if (typeof players === 'object') {
+          Object.keys(players).forEach(function(name) {
+            var player = players[name];
+            player.name = name;
+            self._addPlayer(player);
+          });
+        }
+        break;
+      case 'error':
+        console.log(event.data);
+        self._chat.setHandleField(message.error);
+        self._chat.selectInput();
+        break;
+      default:
+    }
+  };
+  self._ws.onopen = function() {
+    console.log('connected to server');
+  };
+  self._ws.onclose = function() {
+    console.log('disconnected to server');
+  };
+  self._ws.onerror = function(err) {
+    throw err;
+  };
+
 };
