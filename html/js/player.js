@@ -653,16 +653,8 @@ Max.JUMP               = 2;
 Max.CHOP               = 3;
 Max.RIGHT_PUNCH        = 4;
 Max.HAMMER_PUNCH       = 5;
-Max.HIGH_KICK          = 6;
-Max.POWER_SLIDE        = 7;
-Max.MULE_KICK          = 8;
-Max.SUPER_HAMMER_PUNCH = 9;
-Max.DROP_KICK          = 10;
-Max.ELBOW_DROP         = 11;
-Max.BEAR_PUNCH         = 12;
-Max.BRAIN_BUSTER       = 13;
-Max.THUNDER_BODY_SLAM  = 14;
-Max.THUNDER_TACKLE     = 15;
+Max.SUPER_HAMMER_PUNCH = 6;
+Max.KNUCKLE_BOMB       = 7;
 Max.DAMAGED            = 16;
 Max.FALL               = 17;
 Max.RECOVER            = 18;
@@ -727,6 +719,17 @@ function Max(game, options) {
     'hammer-punch-3',
     'hammer-punch-3'
   ], 8, false);
+  // knuckle-bomb animation
+  self._sprite.animations.add('knuckle-bomb', [
+    'knuckle-bomb-0',
+    'knuckle-bomb-1',
+    'knuckle-bomb-2',
+    'knuckle-bomb-3',
+    'knuckle-bomb-0',
+    'knuckle-bomb-1',
+    'knuckle-bomb-2',
+    'knuckle-bomb-3'
+  ], 16, false);
   // add the sprite to sprite group for z-sorting
   if (typeof options.playerSpriteGroup === 'object') {
     var group = options.playerSpriteGroup;
@@ -835,6 +838,10 @@ Max.prototype._setState = function(state) {
       self._state = Max.HAMMER_PUNCH;
       self._currentAnimation = self._sprite.animations.play('hammer-punch');
       break;
+    case Max.KNUCKLE_BOMB:
+      self._state = Max.KNUCKLE_BOMB;
+      self._currentAnimation = self._sprite.animations.play('knuckle-bomb');
+      break;
     default:
       // FIXME
       console.log('set state: UNKNOWN'); 
@@ -867,7 +874,7 @@ Max.prototype._setNextState = function(stateA, stateB, stateC) {
   var self = this;
 
   if (self._isClient) {
-    stateA = stateA || Max.HAMMER_PUNCH;
+    stateA = stateA || Max.KNUCKLE_BOMB;
     stateB = stateB || Max.CHOP;
     stateC = stateC || Max.JUMP;
     if (self._input.buffer.length > 0) {
@@ -969,6 +976,13 @@ Max.prototype._update = function(time) {
         self._setNextState();
       }
       break;
+
+    case Max.KNUCKLE_BOMB:
+      if (!self._currentAnimation.isPlaying) {
+        self._setNextState();
+      }
+      break;
+    
 
   }
 
