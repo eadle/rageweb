@@ -127,14 +127,19 @@ function Player(game, options) {
 
 }
 
-Player.prototype.blur = function() {
+Player.prototype.ignoreInput = function() {
   var self = this;
-  if (self._input) {
+  if (self._isClient && self._input) {
+    self._input.captureInput = false;
     self._input.clear();
   }
 };
 
-Player.prototype.focus = function() {
+Player.prototype.useInput = function() {
+  var self = this;
+  if (self._isClient && self._input) {
+    self._input.captureInput = true;
+  } 
 };
 
 Player.prototype.cameraFollow = function(game) {

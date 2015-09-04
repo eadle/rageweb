@@ -32,6 +32,7 @@ function Game(options) {
     preload: function() {
       // FIXME -- there must be a way to get this internally through phaser
       self._canvasElement = document.getElementsByTagName('canvas')[0];
+
       // phaser settings
       self._game.antialias = false;
       self._game.stage.backgroundColor = '#222244';
@@ -136,7 +137,8 @@ Game.prototype._setupWindowEvents = function() {
   self._game.onBlur.dispatch = function() {
     self._chat.blur();
     if (self._client) {
-      self._client.blur();
+      self._client.ignoreInput();
+      self._clearClientState();
       if (self._client.needsBroadcast()) {
         self._broadcastClientState();
       }
@@ -147,7 +149,14 @@ Game.prototype._setupWindowEvents = function() {
   self._game.onFocus.dispatch = function() {
     self._chat.focus();
     if (self._client) {
-      self._client.focus();
+      self._client.useInput();
+    }
+  };
+
+  // use input when canvas is selected
+  self._canvasElement.onclick = function() {
+    if (self._client) {
+      self._client.useInput();
     }
   };
 
@@ -194,7 +203,18 @@ Game.prototype.selectCanvas = function() {
   self._canvasElement.click();
 };
 
-Game.prototype._selectChat = function() {
+Game.prototype.deselectCanvas = function() {
+  var self = this;
+  if (self._client) {
+    self._client.ignoreInput();
+    self._clearClientState();
+    if (self._client.needsBroadcast()) {
+      self._broadcastClientState();
+    }
+  }
+};
+
+Game.prototype._selectChatPressed = function() {
   var self = this;
   return self._game.input.keyboard.isDown(Phaser.Keyboard.T);
 };
@@ -251,7 +271,7 @@ Game.prototype._updateClient = function(time) {
   var self = this;
 
   if (!self._chat.isSelected()) {
-    if (self._selectChat()) {
+    if (self._selectChatPressed()) {
       self._chat.selectInput();
     }
   }
@@ -261,6 +281,16 @@ Game.prototype._updateClient = function(time) {
     self._broadcastClientState();
   }
 
+};
+
+Game.prototype._clearClientState = function() {
+  var self = this;
+  if (self._client) {
+    self._client.setKeystate(0);
+    if (self._client.needsBroadcast()) {
+      self._broadcastClientState();
+    }
+  }
 };
 
 Game.prototype._broadcastClientState = function() {
@@ -286,7 +316,6 @@ Game.prototype._setupServerConnection = function(server) {
   var self = this;
 
   self._ws = new WebSocket(server);
-
 
   self._ws.onmessage = function(event) {
     console.log('received: ' + event.data);

@@ -142,11 +142,13 @@ Chat.prototype._setupChatInput = function() {
   };
 
   self._input.onfocus = function() {
+    game.deselectCanvas();
     self._hasClientFocus = true;
     self._inputSelected = true;
   };
 
   self._input.onblur = function() {
+    game.selectCanvas();
     self._inputSelected = false;
   };
 
