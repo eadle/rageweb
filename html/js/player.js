@@ -117,8 +117,9 @@ function Player(game, options) {
   self._state = 0;
   self._keystate = 0;
   self._direction = 0;
-  self._lastState = self._state;
-  self._lastDirection = self._direction;
+  self._lastStateInternal = self._state;
+  self._lastKeystateInternal = self._keystate;
+  self._lastDirectionInternal = self._direction;
 
   // client uses input events
   self._input = (self._isClient) ? new PlayerInput(self._game, self) : null;
@@ -192,8 +193,17 @@ Player.prototype.setPosition = function(position) {
 
 Player.prototype.changedDirection = function() {
   var self = this;
-  if (self._lastDirection !== self._direction) {
-    self._lastDirection = self._direction;
+  if (self._lastDirectionInternal !== self._direction) {
+    self._lastDirectionInternal = self._direction;
+    return true;
+  }
+  return false;
+};
+
+Player.prototype.changedKeystate = function() {
+  var self = this;
+  if (self._lastKeystateInternal !== self._keystate) {
+    self._lastKeystateInternal = self._keystate;
     return true;
   }
   return false;
@@ -201,8 +211,8 @@ Player.prototype.changedDirection = function() {
 
 Player.prototype.changedState = function() {
   var self = this;
-  if (self._lastState !== self._state) {
-    self._lastState = self._state;
+  if (self._lastStateInternal !== self._state) {
+    self._lastStateInternal = self._state;
     return true;
   }
   return false;
@@ -210,7 +220,7 @@ Player.prototype.changedState = function() {
 
 Player.prototype.needsBroadcast = function() {
   var self = this;
-  return self.changedState() || self.changedDirection();
+  return self.changedState() || self.changedKeystate() || self.changedDirection();
 };
 
 Player.prototype._faceLeft = function() {
@@ -640,9 +650,9 @@ Max.IDLE               = 0;
 Max.WALK               = 1;
 Max.JUMP               = 2;
 Max.CHOP               = 3;
-Max.ELBOW_SMASH        = 4;
-Max.HIGH_KICK          = 5;
-Max.HAMMER_PUNCH       = 6;
+Max.RIGHT_PUNCH        = 4;
+Max.HAMMER_PUNCH       = 5;
+Max.HIGH_KICK          = 6;
 Max.POWER_SLIDE        = 7;
 Max.MULE_KICK          = 8;
 Max.SUPER_HAMMER_PUNCH = 9;
@@ -656,9 +666,9 @@ Max.DAMAGED            = 16;
 Max.FALL               = 17;
 Max.RECOVER            = 18;
 // constants
-Max.SPEED = 400;
+Max.SPEED = 200;
 Max.CROUCH_TIME = 50; // ms
-Max.JUMP_VELOCITY = -400;
+Max.JUMP_VELOCITY = -250;
 Max.TEXT_OFFSET_X = 0;
 Max.TEXT_OFFSET_Y = -97;
 
@@ -698,9 +708,24 @@ function Max(game, options) {
     'chop-1',
     'chop-2',
     'chop-3',
-    'chop-3',
     'chop-3'
   ], 16, false);
+  // right-punch animation
+  self._sprite.animations.add('right-punch', [
+    'right-punch-0',
+    'right-punch-1',
+    'right-punch-2',
+    'right-punch-3',
+    'right-punch-3'
+  ], 14, false);
+  // hammer-punch animation
+  self._sprite.animations.add('hammer-punch', [
+    'hammer-punch-1',
+    'hammer-punch-1',
+    'hammer-punch-2',
+    'hammer-punch-3',
+    'hammer-punch-3'
+  ], 8, false);
   // add the sprite to sprite group for z-sorting
   if (typeof options.playerSpriteGroup === 'object') {
     var group = options.playerSpriteGroup;
@@ -726,6 +751,9 @@ function Max(game, options) {
   self._stateStartPosition = position;
   self._currentAnimation = null;
 
+  // remember the last state
+  self._prevState = 0; 
+
 }
 
 Max.prototype._clearState = function() {
@@ -734,22 +762,25 @@ Max.prototype._clearState = function() {
   self._shadow.visible = false;
   self._textOffset = {x: Max.TEXT_OFFSET_X, y: Max.TEXT_OFFSET_Y};
   self._faceProperDirection();
+  if (self._input) {
+    self._keystate = self._input.keystate;
+  }
 };
 
 Max.prototype._setState = function(state) {
   var self = this;
 
   self._clearState();
+  self._prevState = self._state;
 
   switch (state) {
     case Max.IDLE:
-      console.log('set state: idle');
+      //console.log('set state: idle');
       self._state = Max.IDLE;
-
       self._currentAnimation = self._sprite.animations.play('idle');
       break;
     case Max.WALK:
-      console.log('set state: walk');
+      //console.log('set state: walk');
       self._state = Max.WALK;
 
       // face sprite in moving direction
@@ -762,7 +793,7 @@ Max.prototype._setState = function(state) {
 
       break;
     case Max.JUMP:
-      console.log('set state: jump');
+      //console.log('set state: jump');
       self._state = Max.JUMP;
 
       self._sprite.animations.stop();
@@ -784,11 +815,19 @@ Max.prototype._setState = function(state) {
 
       break;
     case Max.CHOP:
-      console.log('set state: chop');
+      //console.log('set state: chop');
       self._state = Max.CHOP;
-
       self._currentAnimation = self._sprite.animations.play('chop');
-      // TODO
+      break;
+    case Max.RIGHT_PUNCH:
+      //console.log('set state: right-punch');
+      self._state = Max.RIGHT_PUNCH;
+      self._currentAnimation = self._sprite.animations.play('right-punch');
+      break;
+    case Max.HAMMER_PUNCH:
+      //console.log('set state: hammer-punch');
+      self._state = Max.HAMMER_PUNCH;
+      self._currentAnimation = self._sprite.animations.play('hammer-punch');
       break;
     default:
       // FIXME
@@ -818,49 +857,50 @@ Max.prototype._move = function() {
   if (self._worldBody.velocity.x > 0) self._faceRight();
 };
 
+Max.prototype._setNextState = function(stateA, stateB, stateC) {
+  var self = this;
+
+  if (self._isClient) {
+    stateA = stateA || Max.HAMMER_PUNCH;
+    stateB = stateB || Max.CHOP;
+    stateC = stateC || Max.JUMP;
+    if (self._input.buffer.length > 0) {
+      var buttonPressed = self._input.buffer.shift();
+      switch (buttonPressed) {
+        case 'A':
+          self._setState(stateA);
+          return;
+        case 'B':
+          self._setState(stateB);
+          return;
+        case 'C':
+          self._setState(stateC);
+          return;
+        default:
+      }
+    }
+  }
+
+  if (self._isMoving()) {
+    self._setState(Max.WALK);
+  } else {
+    self._setState(Max.IDLE);
+  }
+
+};
+
 Max.prototype._update = function(time) {
   var self = this;
 
   switch (self._state) {
     case Max.IDLE:
-      if (self._input.buffer.length > 0) {
-        var buttonPressed = self._input.buffer.shift();
-        switch (buttonPressed) {
-          case 'A':
-            /* TODO stationary attack */
-            break;
-          case 'B':
-            self._setState(Max.CHOP);
-            break;
-          case 'C':
-            self._setState(Max.JUMP);
-            break;
-          default:
-        }
-      } else if (self._isMoving()) {
-        self._setState(Max.WALK);
-      }
+      self._setNextState();
       break;
     case Max.WALK:
-      if (self._input.buffer.length > 0) {
-        var buttonPressed = self._input.buffer.shift();
-        switch (buttonPressed) {
-          case 'A':
-            /* TODO stationary attack */
-            break;
-          case 'B':
-            self._setState(Max.CHOP);
-            break;
-          case 'C':
-            self._setState(Max.JUMP);
-            break;
-          default:
-        }
-      } else if (self._isMoving()) {
+      if (self._isMoving()) {
         self._move();
-      } else {
-        self._setState(Max.IDLE);
       }
+      self._setNextState();
       break;
     case Max.JUMP:
 
@@ -870,7 +910,6 @@ Max.prototype._update = function(time) {
         self._sprite.x = Math.floor(self._worldBody.x);
         self._sprite.y = Math.floor(self._worldBody.y);
       }
-
       switch (self._jumpState) {
         case 0: // initial crouch
           var dt = time - self._crouchTime;
@@ -899,17 +938,32 @@ Max.prototype._update = function(time) {
         case 2: // landing
           dt = time - self._landTime;
           if (dt >= Max.CROUCH_TIME) {
-            self._setState(Max.IDLE);
+            self._setNextState();
           }
         default:
       }
 
       break;
+
     case Max.CHOP:
       if (!self._currentAnimation.isPlaying) {
-        self._setState(Max.IDLE);
+        var bCallback = (self._prevState === Max.CHOP) ? Max.RIGHT_PUNCH : Max.CHOP;
+        self._setNextState(Max.RIGHT_PUNCH, bCallback, Max.JUMP);
       }
       break;
+
+    case Max.RIGHT_PUNCH:
+      if (!self._currentAnimation.isPlaying) {
+        self._setNextState(Max.RIGHT_PUNCH, Max.HAMMER_PUNCH, Max.JUMP);
+      }
+      break;
+
+    case Max.HAMMER_PUNCH:
+      if (!self._currentAnimation.isPlaying) {
+        self._setNextState();
+      }
+      break;
+
   }
 
 };

@@ -286,7 +286,7 @@ Game.prototype._setupServerConnection = function(server) {
   self._ws = new WebSocket(server);
 
   self._ws.onmessage = function(event) {
-    //console.log('received: ' + event.data);
+    console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':

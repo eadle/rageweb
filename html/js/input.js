@@ -1,15 +1,15 @@
 'use strict';
 
-PlayerInput.A_KEY = Phaser.Keyboard.A;
-PlayerInput.B_KEY = Phaser.Keyboard.S;
-PlayerInput.C_KEY = Phaser.Keyboard.D;
+PlayerInput.A_KEY = Phaser.Keyboard.S;
+PlayerInput.B_KEY = Phaser.Keyboard.D;
+PlayerInput.C_KEY = Phaser.Keyboard.F;
 
 PlayerInput.LEFT_KEY = Phaser.Keyboard.LEFT;
 PlayerInput.RIGHT_KEY = Phaser.Keyboard.RIGHT;
 PlayerInput.UP_KEY = Phaser.Keyboard.UP;
 PlayerInput.DOWN_KEY = Phaser.Keyboard.DOWN;
 
-function PlayerInput(game, player, options) {
+function PlayerInput(game, options) {
   var self = this;
   options = options || {};
 
@@ -18,12 +18,8 @@ function PlayerInput(game, player, options) {
   }
   self._game = game;
 
-  if (typeof player !== 'object') {
-    throw new Error('Player input expects player context: ' + player);
-  }
-  self._player = player;
-
   self.buffer = [];
+  self.keystate = 0;
 
   self._aButton = null;
   self._bButton = null;
@@ -125,11 +121,11 @@ PlayerInput.prototype.setLeftKey = function(keycode) {
   self._leftButton = self._game.input.keyboard.addKey(keycode);
 
   self._leftButton.onDown.add(function() {
-    this._player._keystate |= Player.LEFT_PRESSED;
+    this.keystate |= Player.LEFT_PRESSED;
   }, self);
 
   self._leftButton.onUp.add(function() {
-    this._player._keystate ^= Player.LEFT_PRESSED;
+    this.keystate ^= Player.LEFT_PRESSED;
   }, self);
 
 };
@@ -144,11 +140,11 @@ PlayerInput.prototype.setRightKey = function(keycode) {
   self._rightButton = self._game.input.keyboard.addKey(keycode);
 
   self._rightButton.onDown.add(function() {
-    this._player._keystate |= Player.RIGHT_PRESSED;
+    this.keystate |= Player.RIGHT_PRESSED;
   }, self);
 
   self._rightButton.onUp.add(function() {
-    this._player._keystate ^= Player.RIGHT_PRESSED;
+    this.keystate ^= Player.RIGHT_PRESSED;
   }, self);
 
 };
@@ -163,11 +159,11 @@ PlayerInput.prototype.setDownKey = function(keycode) {
   self._downButton = self._game.input.keyboard.addKey(keycode);
 
   self._downButton.onDown.add(function() {
-    this._player._keystate |= Player.DOWN_PRESSED;
+    this.keystate |= Player.DOWN_PRESSED;
   }, self);
 
   self._downButton.onUp.add(function() {
-    this._player._keystate ^= Player.DOWN_PRESSED;
+    this.keystate ^= Player.DOWN_PRESSED;
   }, self);
 
 };
@@ -182,11 +178,11 @@ PlayerInput.prototype.setUpKey = function(keycode) {
   self._upButton = self._game.input.keyboard.addKey(keycode);
 
   self._upButton.onDown.add(function() {
-    this._player._keystate |= Player.UP_PRESSED;
+    this.keystate |= Player.UP_PRESSED;
   }, self);
 
   self._upButton.onUp.add(function() {
-    this._player._keystate ^= Player.UP_PRESSED;
+    this.keystate ^= Player.UP_PRESSED;
   }, self);
 
 };
