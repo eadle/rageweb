@@ -102,6 +102,8 @@ function Game(options) {
 
       // resize chat
       self._resizeChat();
+      self._chat.appendSessionMessage('[Move with arrow keys. Do things with SDF. T for talk.]'
+);
     },
     update: function() {
       var time = new Date().getTime();
@@ -285,6 +287,7 @@ Game.prototype._setupServerConnection = function(server) {
 
   self._ws = new WebSocket(server);
 
+
   self._ws.onmessage = function(event) {
     console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
@@ -348,5 +351,7 @@ Game.prototype._setupServerConnection = function(server) {
   self._ws.onerror = function(err) {
     throw err;
   };
+
+
 
 };
