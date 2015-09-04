@@ -841,6 +841,11 @@ Max.prototype._setState = function(state) {
     case Max.KNUCKLE_BOMB:
       self._state = Max.KNUCKLE_BOMB;
       self._currentAnimation = self._sprite.animations.play('knuckle-bomb');
+      self._move(Max.SPEED/2);
+      self._velocityOnJump = {
+        x: self._worldBody.velocity.x,
+        y: self._worldBody.velocity.y
+      };
       break;
     default:
       // FIXME
@@ -859,9 +864,10 @@ Max.prototype._faceProperDirection = function() {
   }
 };
 
-Max.prototype._move = function() {
+Max.prototype._move = function(speed) {
   var self = this;
-  var dx = Max.SPEED, dy = Max.SPEED/2;
+  speed = speed || Max.SPEED;
+  var dx = speed, dy = speed/2;
   if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
   if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
   if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
@@ -978,6 +984,8 @@ Max.prototype._update = function(time) {
       break;
 
     case Max.KNUCKLE_BOMB:
+      self._worldBody.velocity.x = self._velocityOnJump.x;
+      self._worldBody.velocity.y = self._velocityOnJump.y;
       if (!self._currentAnimation.isPlaying) {
         self._setNextState();
       }
