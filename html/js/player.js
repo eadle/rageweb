@@ -13,6 +13,7 @@ Player.FACING_LEFT = 1 << 12;
 // other shared attributes
 Player.START_POS = {x: 256, y: 220}; // temp
 Player.HALF_GRAVITY = 300;
+Player.CHANGED_STATE = -1;
 
 function Player(game, options) {
   var self = this;
@@ -772,6 +773,11 @@ Max.prototype._setState = function(state) {
 
   self._clearState();
   self._prevState = self._state;
+
+  // all states but idle and walk should be rebroadcast on repeats
+  if (self._state !== Max.IDLE && self._state !== Max.WALK) {
+    self._lastStateInternal = Player.CHANGED_STATE;
+  }
 
   switch (state) {
     case Max.IDLE:
