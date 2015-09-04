@@ -128,15 +128,11 @@ function Player(game, options) {
 Player.prototype.blur = function() {
   var self = this;
   if (self._input) {
-    self._input.blur();
+    self._input.clear();
   }
 };
 
 Player.prototype.focus = function() {
-  var self = this;
-  if (self._input) {
-    self._input.focus();
-  }
 };
 
 Player.prototype.cameraFollow = function(game) {
@@ -373,6 +369,10 @@ Player.prototype._update = function(time) {};
 Player.prototype._setState = function(state) {};
 Player.prototype._setNextState = function() {};
 Player.prototype._collisionCallback = function(bodyA, bodyB) {};
+
+Player.prototype._isMoving = function() {
+  return this._isMovingHorizontally() || this._isMovingVertically();
+};
 
 Player.prototype._isMovingHorizontally = function() {
   var self = this;
@@ -692,6 +692,15 @@ function Max(game, options) {
     'walk-4',
     'walk-5'
   ], 10, true);
+  // chop animation
+  self._sprite.animations.add('chop', [
+    'chop-0',
+    'chop-1',
+    'chop-2',
+    'chop-3',
+    'chop-3',
+    'chop-3'
+  ], 16, false);
   // add the sprite to sprite group for z-sorting
   if (typeof options.playerSpriteGroup === 'object') {
     var group = options.playerSpriteGroup;
@@ -724,7 +733,7 @@ Max.prototype._clearState = function() {
   self._lockSpriteToBody = true;
   self._shadow.visible = false;
   self._textOffset = {x: Max.TEXT_OFFSET_X, y: Max.TEXT_OFFSET_Y};
-
+  self._faceProperDirection();
 };
 
 Max.prototype._setState = function(state) {
@@ -736,12 +745,13 @@ Max.prototype._setState = function(state) {
     case Max.IDLE:
       console.log('set state: idle');
       self._state = Max.IDLE;
+
       self._currentAnimation = self._sprite.animations.play('idle');
       break;
     case Max.WALK:
-
       console.log('set state: walk');
       self._state = Max.WALK;
+
       // face sprite in moving direction
       if (self._keystate & Player.LEFT_PRESSED) {
         self._faceLeft();
@@ -752,23 +762,33 @@ Max.prototype._setState = function(state) {
 
       break;
     case Max.JUMP:
-
       console.log('set state: jump');
       self._state = Max.JUMP;
+
       self._sprite.animations.stop();
       self._sprite.frameName = 'jump-0';
       self._lockSpriteToBody = false;
       self._jumpState = 0;
       self._crouchTime = new Date().getTime();
+
       self._positionOnJump = { 
         x: self._sprite.x,
         y: self._sprite.y
       };  
+
+      self._move();
       self._velocityOnJump = {
         x: self._worldBody.velocity.x,
         y: self._worldBody.velocity.y
       };
 
+      break;
+    case Max.CHOP:
+      console.log('set state: chop');
+      self._state = Max.CHOP;
+
+      self._currentAnimation = self._sprite.animations.play('chop');
+      // TODO
       break;
     default:
       // FIXME
@@ -777,17 +797,34 @@ Max.prototype._setState = function(state) {
 
 };
 
+Max.prototype._faceProperDirection = function() {
+  var self = this;
+  if (self._keystate & Player.LEFT_PRESSED && !(self._keystate & Player.RIGHT_PRESSED)) {
+    self._faceLeft();
+  }
+  if (self._keystate & Player.RIGHT_PRESSED && !(self._keystate & Player.LEFT_PRESSED)) {
+    self._faceRight();
+  }
+};
+
+Max.prototype._move = function() {
+  var self = this;
+  var dx = Max.SPEED, dy = Max.SPEED/2;
+  if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
+  if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
+  if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
+  if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
+  if (self._worldBody.velocity.x < 0) self._faceLeft();
+  if (self._worldBody.velocity.x > 0) self._faceRight();
+};
+
 Max.prototype._update = function(time) {
   var self = this;
-
-  if (self._input) {
-    self._input.debugMovement(); 
-  }
 
   switch (self._state) {
     case Max.IDLE:
       if (self._input.buffer.length > 0) {
-        var buttonPressed = self._state.buffer.shift();
+        var buttonPressed = self._input.buffer.shift();
         switch (buttonPressed) {
           case 'A':
             /* TODO stationary attack */
@@ -800,13 +837,13 @@ Max.prototype._update = function(time) {
             break;
           default:
         }
-      } else if (self._keystate !== 0) {
+      } else if (self._isMoving()) {
         self._setState(Max.WALK);
       }
       break;
     case Max.WALK:
       if (self._input.buffer.length > 0) {
-        var buttonPressed = self._state.buffer.shift();
+        var buttonPressed = self._input.buffer.shift();
         switch (buttonPressed) {
           case 'A':
             /* TODO stationary attack */
@@ -819,44 +856,11 @@ Max.prototype._update = function(time) {
             break;
           default:
         }
-      } else if (self._keystate !== 0) {
-        console.log('move pls');
-        var dx = Max.SPEED,
-            dy = Max.SPEED/2;
-        if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
-        if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
-        if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
-        if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
-        if (self._worldBody.velocity.x < 0) self._faceLeft();
-        if (self._worldBody.velocity.x > 0) self._faceRight();
+      } else if (self._isMoving()) {
+        self._move();
       } else {
         self._setState(Max.IDLE);
       }
-      break;
-    case Max.JUMP:
-      break;
-    case Max.CHOP:
-      break;
-  }
-
-};
-
-/*
-Max.prototype._update = function(time) {
-  var self = this;
-
-  // clear velocity
-  self._worldBody.velocity.x = 0;
-  self._worldBody.velocity.y = 0;
-
-  switch (self._state) {
-    case Max.WALK:
-      var dx = Max.SPEED,
-          dy = Max.SPEED/2;
-      if (self._keystate & Player.LEFT_PRESSED)  self._worldBody.moveLeft(dx);
-      if (self._keystate & Player.RIGHT_PRESSED) self._worldBody.moveRight(dx);
-      if (self._keystate & Player.UP_PRESSED)    self._worldBody.moveUp(dy);
-      if (self._keystate & Player.DOWN_PRESSED)  self._worldBody.moveDown(dy);
       break;
     case Max.JUMP:
 
@@ -895,14 +899,17 @@ Max.prototype._update = function(time) {
         case 2: // landing
           dt = time - self._landTime;
           if (dt >= Max.CROUCH_TIME) {
-            self._setNextState();
+            self._setState(Max.IDLE);
           }
         default:
       }
 
       break;
-    default:
+    case Max.CHOP:
+      if (!self._currentAnimation.isPlaying) {
+        self._setState(Max.IDLE);
+      }
+      break;
   }
 
-}
-*/
+};
