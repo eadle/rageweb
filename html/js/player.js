@@ -660,6 +660,7 @@ Max.RIGHT_PUNCH        = 4;
 Max.HAMMER_PUNCH       = 5;
 Max.SUPER_HAMMER_PUNCH = 6;
 Max.KNUCKLE_BOMB       = 7;
+Max.THUNDER_TACKLE     = 8;
 Max.DAMAGED            = 16;
 Max.FALL               = 17;
 Max.RECOVER            = 18;
@@ -735,6 +736,16 @@ function Max(game, options) {
     'knuckle-bomb-2',
     'knuckle-bomb-3'
   ], 16, false);
+  // thunder-tackle-animation
+  self._sprite.animations.add('thunder-tackle', [
+    'thunder-tackle-0',
+    'thunder-tackle-0',
+    'thunder-tackle-1',
+    'thunder-tackle-3',
+    'thunder-tackle-3',
+    'thunder-tackle-1'
+  ], 14, false); 
+
   // add the sprite to sprite group for z-sorting
   if (typeof options.playerSpriteGroup === 'object') {
     var group = options.playerSpriteGroup;
@@ -747,21 +758,21 @@ function Max(game, options) {
     self._setState(Max.IDLE);
   }
 
-  // jump substates (crouch=0, jump=1, land=2)
+  // state helper variables
+  self._prevState = 0; 
+  self._velocityOnStart = {x: 0, y: 0};
+  self._positionOnStart = {x: self._sprite.x, y: self._sprite.y};
+  self._currentAnimation = null;
+
+  // FIXME redo jump state
   self._jumpState  = -1;
   self._crouchTime = -1;
   self._jumpTime   = -1;
   self._landTime   = -1;
-  self._velocityOnJump = {x: 0, y: 0};
-  self._positionOnJump = {x: 0, y: 0};
 
-  // state helper variables
+  // FIXME to be removed
   self._stateStartTime = new Date().getTime();
   self._stateStartPosition = position;
-  self._currentAnimation = null;
-
-  // remember the last state
-  self._prevState = 0; 
 
 }
 
@@ -770,10 +781,10 @@ Max.prototype._clearState = function() {
   self._lockSpriteToBody = true;
   self._shadow.visible = false;
   self._textOffset = {x: Max.TEXT_OFFSET_X, y: Max.TEXT_OFFSET_Y};
-  self._faceProperDirection();
   if (self._input) {
     self._keystate = self._input.keystate;
   }
+  self._faceProperDirection();
 };
 
 Max.prototype._setState = function(state) {
@@ -784,7 +795,7 @@ Max.prototype._setState = function(state) {
 
   // all states but idle and walk should be rebroadcast on repeats
   if (self._state !== Max.IDLE && self._state !== Max.WALK) {
-    self._lastStateInternal = Player.CHANGED_STATE;
+    self._lastStateInternal = Player.CHANGED_STATE; // FIXME
   }
 
   switch (state) {
@@ -816,13 +827,8 @@ Max.prototype._setState = function(state) {
       self._jumpState = 0;
       self._crouchTime = new Date().getTime();
 
-      self._positionOnJump = { 
-        x: self._sprite.x,
-        y: self._sprite.y
-      };  
-
       self._move();
-      self._velocityOnJump = {
+      self._velocityOnStart = {
         x: self._worldBody.velocity.x,
         y: self._worldBody.velocity.y
       };
@@ -847,10 +853,28 @@ Max.prototype._setState = function(state) {
       self._state = Max.KNUCKLE_BOMB;
       self._currentAnimation = self._sprite.animations.play('knuckle-bomb');
       self._move(Max.SPEED/2);
-      self._velocityOnJump = {
+      self._velocityOnStart = {
         x: self._worldBody.velocity.x,
         y: self._worldBody.velocity.y
       };
+      break;
+    case Max.THUNDER_TACKLE:
+      self._state = Max.THUNDER_TACKLE;
+
+      // get vertical velocity for tackle
+      if (self._keystate & Player.UP_PRESSED !== self._keystate & Player.DOWN_PRESSED) {
+      }
+
+      var dy = 1.25*Max.SPEED;
+      self._velocityOnStart.y = 0;
+      if (self._keystate & Player.UP_PRESSED) self._velocityOnStart.y -= dy;
+      if (self._keystate & Player.DOWN_PRESSED) self._velocityOnStart.y += dy;
+
+      var dx = 2.5*Max.SPEED;
+      self._velocityOnStart.x = (self._sprite.scale.x < 0) ? -dx : dx;
+
+      self._currentAnimation = self._sprite.animations.play('thunder-tackle');
+
       break;
     default:
       // FIXME
@@ -885,7 +909,7 @@ Max.prototype._setNextState = function(stateA, stateB, stateC) {
   var self = this;
 
   if (self._isClient) {
-    stateA = stateA || Max.KNUCKLE_BOMB;
+    stateA = stateA || Max.THUNDER_TACKLE;
     stateB = stateB || Max.CHOP;
     stateC = stateC || Max.JUMP;
     if (self._input.buffer.length > 0) {
@@ -929,8 +953,8 @@ Max.prototype._update = function(time) {
     case Max.JUMP:
 
       if (self._jumpState > 0) {
-        self._worldBody.velocity.x = self._velocityOnJump.x;
-        self._worldBody.velocity.y = self._velocityOnJump.y;
+        self._worldBody.velocity.x = self._velocityOnStart.x;
+        self._worldBody.velocity.y = self._velocityOnStart.y;
         self._sprite.x = Math.floor(self._worldBody.x);
         self._sprite.y = Math.floor(self._worldBody.y);
       }
@@ -989,13 +1013,23 @@ Max.prototype._update = function(time) {
       break;
 
     case Max.KNUCKLE_BOMB:
-      self._worldBody.velocity.x = self._velocityOnJump.x;
-      self._worldBody.velocity.y = self._velocityOnJump.y;
+      self._worldBody.velocity.x = self._velocityOnStart.x;
+      self._worldBody.velocity.y = self._velocityOnStart.y;
       if (!self._currentAnimation.isPlaying) {
         self._setNextState();
       }
       break;
     
+    case Max.THUNDER_TACKLE:
+      if (self._sprite.frameName !== 'thunder-tackle-0') {
+        self._shadow.visible = true;
+        self._worldBody.velocity.x = self._velocityOnStart.x;
+        self._worldBody.velocity.y = self._velocityOnStart.y;
+      }
+      if (!self._currentAnimation.isPlaying) {
+        self._setNextState();
+      }
+      break;
 
   }
 
