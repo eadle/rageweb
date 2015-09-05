@@ -905,16 +905,23 @@ Max.prototype._move = function(speed) {
   if (self._worldBody.velocity.x > 0) self._faceRight();
 };
 
-Max.prototype._setNextState = function(stateA, stateB, stateC) {
+Max.prototype._setNextState = function(transitions) {
   var self = this;
 
   if (self._isClient) {
-    stateA = stateA || Max.THUNDER_TACKLE;
-    stateB = stateB || Max.CHOP;
-    stateC = stateC || Max.JUMP;
-    if (self._input.buffer.length > 0) {
-      var buttonPressed = self._input.buffer.shift();
-      switch (buttonPressed) {
+    var transition = transitions || {};
+
+    var stateA = transition.A || Max.KNUCKLE_BOMB,
+        stateB = transition.B || Max.CHOP,
+        stateC = transition.C || Max.JUMP,
+        stateAB  = transition.AB  || Max.THUNDER_TACKLE,
+        stateAC  = transition.AC  || 0, // FIXME
+        stateBC  = transition.BC  || 0, // FIXME
+        stateABC = transition.ABC || 0; // FIXME
+
+    if (self._input.hasInput()) {
+      var buttonState = self._input.dequeue();
+      switch (buttonState) {
         case 'A':
           self._setState(stateA);
           return;
@@ -924,6 +931,12 @@ Max.prototype._setNextState = function(stateA, stateB, stateC) {
         case 'C':
           self._setState(stateC);
           return;
+        case 'AB':
+          self._setState(stateAB);
+          return;
+        case 'AC':
+        case 'BC':
+        case 'ABC':
         default:
       }
     }
@@ -995,20 +1008,20 @@ Max.prototype._update = function(time) {
 
     case Max.CHOP:
       if (!self._currentAnimation.isPlaying) {
-        var bCallback = (self._prevState === Max.CHOP) ? Max.RIGHT_PUNCH : Max.CHOP;
-        self._setNextState(Max.RIGHT_PUNCH, bCallback, Max.JUMP);
+        var stateOnB = (self._prevState === Max.CHOP) ? Max.RIGHT_PUNCH : Max.CHOP;
+        self._setNextState({B: stateOnB});
       }
       break;
 
     case Max.RIGHT_PUNCH:
       if (!self._currentAnimation.isPlaying) {
-        self._setNextState(Max.RIGHT_PUNCH, Max.HAMMER_PUNCH, Max.JUMP);
+        self._setNextState({B: Max.HAMMER_PUNCH});
       }
       break;
 
     case Max.HAMMER_PUNCH:
       if (!self._currentAnimation.isPlaying) {
-        self._setNextState(Max.THUNDER_TACKLE, Max.KNUCKLE_BOMB);
+        self._setNextState();
       }
       break;
 
@@ -1016,7 +1029,7 @@ Max.prototype._update = function(time) {
       self._worldBody.velocity.x = self._velocityOnStart.x;
       self._worldBody.velocity.y = self._velocityOnStart.y;
       if (!self._currentAnimation.isPlaying) {
-        self._setNextState(Max.THUNDER_TACKLE, Max.KNUCKLE_BOMB);
+        self._setNextState();
       }
       break;
     

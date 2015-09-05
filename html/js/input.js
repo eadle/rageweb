@@ -1,6 +1,6 @@
 'use strict';
 
-PlayerInput.MAX_DT = 10;
+PlayerInput.MAX_DT = 1000;
 
 PlayerInput.A_KEY = Phaser.Keyboard.S;
 PlayerInput.B_KEY = Phaser.Keyboard.D;
@@ -80,6 +80,49 @@ PlayerInput.prototype.clear = function() {
 
 };
 
+PlayerInput.prototype.hasInput = function() {
+  return (this.buffer.length > 0);
+}
+
+PlayerInput.prototype.dequeue = function() {
+  var self = this;
+  var buttonState = '';
+
+  var lastTime = -1;
+  while (self.buffer.length > 0) {
+    var keyInfo = self.buffer[0];
+    if (keyInfo.time - lastTime <= PlayerInput.MAX_DT || lastTime < 0) {
+      // insert unique keys
+      if (buttonState.indexOf(keyInfo.key) === -1)
+        buttonState += keyInfo.key;
+      lastTime = keyInfo.time;
+      self.buffer.shift();
+    } else {
+      break;
+    }
+  }
+
+  // sort keys in string
+  var buttonArray = buttonState.split('');
+  buttonArray = buttonArray.sort();
+  buttonState = buttonArray.join('');
+
+  return buttonState;
+};
+
+PlayerInput.prototype.enqueue = function(key) {
+  var self = this;
+
+  if (self.captureInput) {
+    var now = new Date().getTime();
+    self.buffer.push({
+      key: key,
+      time: now
+    });
+  }
+
+};
+
 PlayerInput.prototype.setAKey = function(keycode) {
   var self = this;
   if (self._aButton) {
@@ -87,17 +130,7 @@ PlayerInput.prototype.setAKey = function(keycode) {
   }
   self._aButton = self._game.input.keyboard.addKey(keycode);
   self._game.input.keyboard.removeKeyCapture(keycode);
-  self._aButton.onDown.add(function() {
-    if (this.captureInput) {
-
-      var now = new Date().getTime();
-      var dt = now - self._lastPressTime; 
-      self._lastPressTime = now;
-      console.log('time since last press: ' + dt + ' ms');
-
-      this.buffer.push('A');
-    }
-  }, this);
+  self._aButton.onDown.add(function() {this.enqueue('A')}, this);
 };
 
 PlayerInput.prototype.setBKey = function(keycode) {
@@ -107,16 +140,7 @@ PlayerInput.prototype.setBKey = function(keycode) {
   }
   self._bButton = self._game.input.keyboard.addKey(keycode);
   self._game.input.keyboard.removeKeyCapture(keycode);
-  self._bButton.onDown.add(function() {
-    if (this.captureInput) {
-      var now = new Date().getTime();
-      var dt = now - self._lastPressTime; 
-      self._lastPressTime = now;
-      console.log('time since last press: ' + dt + ' ms');
-
-      this.buffer.push('B');
-    }
-  }, this);
+  self._bButton.onDown.add(function() {this.enqueue('B')}, this);
 };
 
 PlayerInput.prototype.setCKey = function(keycode) {
@@ -126,16 +150,7 @@ PlayerInput.prototype.setCKey = function(keycode) {
   }
   self._cButton = self._game.input.keyboard.addKey(keycode);
   self._game.input.keyboard.removeKeyCapture(keycode);
-  self._cButton.onDown.add(function() {
-    if (this.captureInput) {
-      var now = new Date().getTime();
-      var dt = now - self._lastPressTime; 
-      self._lastPressTime = now;
-      console.log('time since last press: ' + dt + ' ms');
-
-      this.buffer.push('C');
-    }
-  }, this);
+  self._cButton.onDown.add(function() {this.enqueue('C')}, this);
 };
 
 
