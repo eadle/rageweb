@@ -1,0 +1,11 @@
+ORIGINAL        CONVERTED
+--------        ---------
+00.wav          attack.*
+01.wav          jump.*
+V00.wav         hit-0.*
+V01.wav         hit-1.*
+V02.wav         hit-2.*
+V11.wav         max/fall.*
+V21.wav         max/thunder-body-slam.*
+V40.wav         max/elbow-drop.*
+20.wav          max/power-slide.*

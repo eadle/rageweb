@@ -1,5 +1,7 @@
 'use strict';
 
+PlayerInput.MAX_DT = 10;
+
 PlayerInput.A_KEY = Phaser.Keyboard.S;
 PlayerInput.B_KEY = Phaser.Keyboard.D;
 PlayerInput.C_KEY = Phaser.Keyboard.F;
@@ -20,6 +22,7 @@ function PlayerInput(game, options) {
 
   self.buffer = [];
   self.keystate = 0;
+  self._lastPressTime = 0;
 
   self._aButton = null;
   self._bButton = null;
@@ -86,6 +89,12 @@ PlayerInput.prototype.setAKey = function(keycode) {
   self._game.input.keyboard.removeKeyCapture(keycode);
   self._aButton.onDown.add(function() {
     if (this.captureInput) {
+
+      var now = new Date().getTime();
+      var dt = now - self._lastPressTime; 
+      self._lastPressTime = now;
+      console.log('time since last press: ' + dt + ' ms');
+
       this.buffer.push('A');
     }
   }, this);
@@ -100,6 +109,11 @@ PlayerInput.prototype.setBKey = function(keycode) {
   self._game.input.keyboard.removeKeyCapture(keycode);
   self._bButton.onDown.add(function() {
     if (this.captureInput) {
+      var now = new Date().getTime();
+      var dt = now - self._lastPressTime; 
+      self._lastPressTime = now;
+      console.log('time since last press: ' + dt + ' ms');
+
       this.buffer.push('B');
     }
   }, this);
@@ -114,6 +128,11 @@ PlayerInput.prototype.setCKey = function(keycode) {
   self._game.input.keyboard.removeKeyCapture(keycode);
   self._cButton.onDown.add(function() {
     if (this.captureInput) {
+      var now = new Date().getTime();
+      var dt = now - self._lastPressTime; 
+      self._lastPressTime = now;
+      console.log('time since last press: ' + dt + ' ms');
+
       this.buffer.push('C');
     }
   }, this);
