@@ -103,8 +103,7 @@ function Game(options) {
 
       // resize chat
       self._resizeChat();
-      self._chat.appendSessionMessage('[Move with arrow keys. Do things with SDF. T for talk.]'
-);
+      self._chat.appendSessionMessage('[Keyboard controls: ASDF and arrow keys] [Gamepad supported]');
     },
     update: function() {
       var time = new Date().getTime();
