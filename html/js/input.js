@@ -1,6 +1,7 @@
 'use strict';
 
 PlayerInput.MAX_DT = 10;
+PlayerInput.WINDOW = 250;
 
 PlayerInput.A_KEY = Phaser.Keyboard.A;
 PlayerInput.B_KEY = Phaser.Keyboard.D;
@@ -149,10 +150,15 @@ PlayerInput.prototype.dequeue = function() {
   var self = this;
   var buttonState = '';
 
+  var now = new Date().getTime();
+
   var lastTime = -1;
   while (self.buffer.length > 0) {
     var keyInfo = self.buffer[0];
-    if (keyInfo.time - lastTime <= PlayerInput.MAX_DT || lastTime < 0) {
+    if (now - keyInfo.time > PlayerInput.WINDOW) {
+      self.buffer.shift();
+      continue;
+    } else if (keyInfo.time - lastTime <= PlayerInput.MAX_DT || lastTime < 0) {
       // insert unique keys
       if (buttonState.indexOf(keyInfo.key) === -1)
         buttonState += keyInfo.key;
