@@ -655,6 +655,7 @@ Max.prototype = Object.create(Player.prototype);
 Max.constructor = Max;
 
 // states
+Max.NO_STATE           = -1;
 Max.IDLE               = 0;
 Max.WALK               = 1;
 Max.JUMP               = 2;
@@ -831,6 +832,9 @@ Max.prototype._clearState = function() {
 Max.prototype._setState = function(state) {
   var self = this;
 
+  if (Max.NO_STATE === state)
+    return;
+
   self._clearState();
   self._prevState = self._state;
 
@@ -977,13 +981,11 @@ Max.prototype._setNextState = function(transitions) {
   if (self._isClient) {
     var transition = transitions || {};
 
-    var stateA = transition.A || Max.POWER_SLIDE,
-        stateB = transition.B || Max.CHOP,
-        stateC = transition.C || Max.JUMP,
-        stateAB  = transition.AB  || Max.THUNDER_TACKLE,
-        stateAC  = transition.AC  || 0, // FIXME
-        stateBC  = transition.BC  || 0, // FIXME
-        stateABC = transition.ABC || 0; // FIXME
+    var stateA  = transition.A  || Max.CHOP,
+        stateB  = transition.B  || Max.POWER_SLIDE,
+        stateX  = transition.X  || Max.KNUCKLE_BOMB,
+        stateY  = transition.Y  || Max.JUMP,
+        stateAX = transition.AX || Max.THUNDER_TACKLE;
 
     if (self._input.hasInput()) {
       var buttonState = self._input.dequeue();
@@ -994,15 +996,15 @@ Max.prototype._setNextState = function(transitions) {
         case 'B':
           self._setState(stateB);
           return;
-        case 'C':
-          self._setState(stateC);
+        case 'X':
+          self._setState(stateX);
           return;
-        case 'AB':
-          self._setState(stateAB);
+        case 'Y':
+          self._setState(stateY);
           return;
-        case 'AC':
-        case 'BC':
-        case 'ABC':
+        case 'AX':
+          self._setState(stateAX);
+          return;
         default:
       }
     }
@@ -1023,12 +1025,14 @@ Max.prototype._update = function(time) {
     case Max.IDLE:
       self._setNextState();
       break;
+
     case Max.WALK:
       if (self._isMoving()) {
         self._move();
       }
       self._setNextState();
       break;
+
     case Max.JUMP:
 
       if (self._jumpState > 0) {
@@ -1061,7 +1065,13 @@ Max.prototype._update = function(time) {
             self._sprite.frameName = 'jump-0';
             self._shadow.visible = false;
           } else if (self._isClient && self._input.hasInput()) {
-            self._setNextState({A: Max.SUPER_HAMMER_PUNCH, B: Max.ELBOW_DROP, C: Max.DROP_KICK});
+            self._setNextState({
+              A: Max.ELBOW_DROP,
+              B: Max.DROP_KICK,
+              X: Max.SUPER_HAMMER_PUNCH,
+              Y: Max.NO_STATE,
+              AX: Max.NO_STATE
+            });
           }
 
           break;
@@ -1110,14 +1120,14 @@ Max.prototype._update = function(time) {
 
     case Max.CHOP:
       if (!self._currentAnimation.isPlaying) {
-        var stateOnB = (self._prevState === Max.CHOP) ? Max.RIGHT_PUNCH : Max.CHOP;
-        self._setNextState({B: stateOnB});
+        var stateOnA = (self._prevState === Max.CHOP) ? Max.RIGHT_PUNCH : Max.CHOP;
+        self._setNextState({A: stateOnA});
       }
       break;
 
     case Max.RIGHT_PUNCH:
       if (!self._currentAnimation.isPlaying) {
-        self._setNextState({B: Max.HAMMER_PUNCH});
+        self._setNextState({A: Max.HAMMER_PUNCH});
       }
       break;
 

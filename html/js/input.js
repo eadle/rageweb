@@ -2,9 +2,10 @@
 
 PlayerInput.MAX_DT = 10;
 
-PlayerInput.A_KEY = Phaser.Keyboard.S;
+PlayerInput.A_KEY = Phaser.Keyboard.A;
 PlayerInput.B_KEY = Phaser.Keyboard.D;
-PlayerInput.C_KEY = Phaser.Keyboard.F;
+PlayerInput.X_KEY = Phaser.Keyboard.S;
+PlayerInput.Y_KEY = Phaser.Keyboard.F;
 
 PlayerInput.LEFT_KEY = Phaser.Keyboard.LEFT;
 PlayerInput.RIGHT_KEY = Phaser.Keyboard.RIGHT;
@@ -20,7 +21,6 @@ function PlayerInput(game, options) {
   }
   self._game = game;
 
-  var buttonCodes = ['A', 'B', 'X', 'Y'];
   self._pad = self._game.input.gamepad.start();
   self._pad = self._game.input.gamepad.pad1;
   self._pad.addCallbacks(self, {
@@ -33,13 +33,16 @@ function PlayerInput(game, options) {
     onDown: function(buttonCode, value) {
       switch (buttonCode) {
         case 0:
-          self.enqueue('B');  
+          self.enqueue('A');  
+          break;
+        case 1:
+          self.enqueue('B');
           break;
         case 2:
-          self.enqueue('A');
+          self.enqueue('X');
           break;
         case 3:
-          self.enqueue('C');
+          self.enqueue('Y');
           break;
         default:
       }
@@ -81,10 +84,12 @@ function PlayerInput(game, options) {
 
   self._aButton = null;
   self._bButton = null;
-  self._cButton = null;
+  self._xButton = null;
+  self._yButton = null;
   self.setAKey(PlayerInput.A_KEY);
   self.setBKey(PlayerInput.B_KEY);
-  self.setCKey(PlayerInput.C_KEY);
+  self.setXKey(PlayerInput.X_KEY);
+  self.setYKey(PlayerInput.Y_KEY);
 
   self._leftButton = null;
   self._rightButton = null;
@@ -127,7 +132,8 @@ PlayerInput.prototype.clear = function() {
   // soft reset on all buttons
   self._aButton.reset(false);
   self._bButton.reset(false);
-  self._cButton.reset(false);
+  self._xButton.reset(false);
+  self._yButton.reset(false);
   self._leftButton.reset(false);
   self._rightButton.reset(false);
   self._downButton.reset(false);
@@ -168,6 +174,7 @@ PlayerInput.prototype.dequeue = function() {
 PlayerInput.prototype.enqueue = function(key) {
   var self = this;
 
+  console.log(key + ' pressed');
   if (self.captureInput) {
     var now = new Date().getTime();
     self.buffer.push({
@@ -198,14 +205,24 @@ PlayerInput.prototype.setBKey = function(keycode) {
   self._bButton.onDown.add(function() {this.enqueue('B')}, this);
 };
 
-PlayerInput.prototype.setCKey = function(keycode) {
+PlayerInput.prototype.setXKey = function(keycode) {
   var self = this;
-  if (self._cButton) {
-    self._cButton.reset(true);
+  if (self._xButton) {
+    self._xButton.reset(true);
   }
-  self._cButton = self._game.input.keyboard.addKey(keycode);
+  self._xButton = self._game.input.keyboard.addKey(keycode);
   self._game.input.keyboard.removeKeyCapture(keycode);
-  self._cButton.onDown.add(function() {this.enqueue('C')}, this);
+  self._xButton.onDown.add(function() {this.enqueue('X')}, this);
+};
+
+PlayerInput.prototype.setYKey = function(keycode) {
+  var self = this;
+  if (self._yButton) {
+    self._yButton.reset(true);
+  }
+  self._yButton = self._game.input.keyboard.addKey(keycode);
+  self._game.input.keyboard.removeKeyCapture(keycode);
+  self._yButton.onDown.add(function() {this.enqueue('Y')}, this);
 };
 
 
