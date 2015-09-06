@@ -666,6 +666,7 @@ Max.KNUCKLE_BOMB       = 7;
 Max.THUNDER_TACKLE     = 8;
 Max.POWER_SLIDE        = 10;
 Max.ELBOW_DROP         = 11;
+Max.DROP_KICK          = 12;
 Max.DAMAGED            = 16;
 Max.FALL               = 17;
 Max.RECOVER            = 18;
@@ -747,6 +748,11 @@ function Max(game, options) {
     'elbow-drop-0',
     'elbow-drop-1'
   ], 8, false);
+  // drop-kick animation
+  self._sprite.animations.add('drop-kick', [
+    'drop-kick-0',
+    'drop-kick-1'
+  ], 8, false);
   // knuckle-bomb animation
   self._sprite.animations.add('knuckle-bomb', [
     'knuckle-bomb-0',
@@ -801,6 +807,8 @@ function Max(game, options) {
   self._crouchTime = -1;
   self._jumpTime   = -1;
   self._landTime   = -1;
+  self._landingSprite = 'jump-0';
+  self._landingOffset = 0;
 
   // FIXME to be removed
   self._stateStartTime = new Date().getTime();
@@ -812,6 +820,7 @@ Max.prototype._clearState = function() {
   var self = this;
   self._lockSpriteToBody = true;
   self._shadow.visible = false;
+  self._landingOffset = 0;
   self._textOffset = {x: Max.TEXT_OFFSET_X, y: Max.TEXT_OFFSET_Y};
   if (self._input) {
     self._keystate = self._input.keystate;
@@ -831,56 +840,52 @@ Max.prototype._setState = function(state) {
   }
 
   switch (state) {
+
     case Max.IDLE:
-      //console.log('set state: idle');
       self._state = Max.IDLE;
       self._currentAnimation = self._sprite.animations.play('idle');
       break;
-    case Max.WALK:
-      //console.log('set state: walk');
-      self._state = Max.WALK;
 
-      // face sprite in moving direction
+    case Max.WALK:
+      self._state = Max.WALK;
       if (self._keystate & Player.LEFT_PRESSED) {
         self._faceLeft();
       } else if (self._keystate & Player.RIGHT_PRESSED) {
         self._faceRight();
       }
       self._currentAnimation = self._sprite.animations.play('walk');
-
       break;
+
     case Max.JUMP:
-      //console.log('set state: jump');
       self._state = Max.JUMP;
-
-      self._sprite.animations.stop();
-      self._sprite.frameName = 'jump-0';
-      self._lockSpriteToBody = false;
       self._jumpState = 0;
+      self._sprite.animations.stop();
+      self._lockSpriteToBody = false;
+      self._sprite.frameName = 'jump-0';
+      self._landingSprite = 'jump-0';
       self._crouchTime = new Date().getTime();
-
       self._move();
       self._velocityOnStart = {
         x: self._worldBody.velocity.x,
         y: self._worldBody.velocity.y
       };
-
       break;
+
     case Max.CHOP:
-      //console.log('set state: chop');
       self._state = Max.CHOP;
       self._currentAnimation = self._sprite.animations.play('chop');
       break;
+
     case Max.RIGHT_PUNCH:
-      //console.log('set state: right-punch');
       self._state = Max.RIGHT_PUNCH;
       self._currentAnimation = self._sprite.animations.play('right-punch');
       break;
+
     case Max.HAMMER_PUNCH:
-      //console.log('set state: hammer-punch');
       self._state = Max.HAMMER_PUNCH;
       self._currentAnimation = self._sprite.animations.play('hammer-punch');
       break;
+
     case Max.KNUCKLE_BOMB:
       self._state = Max.KNUCKLE_BOMB;
       self._currentAnimation = self._sprite.animations.play('knuckle-bomb');
@@ -890,6 +895,7 @@ Max.prototype._setState = function(state) {
         y: self._worldBody.velocity.y
       };
       break;
+
     case Max.THUNDER_TACKLE:
       self._state = Max.THUNDER_TACKLE;
       var dy = 1.25*Max.SPEED;
@@ -912,22 +918,33 @@ Max.prototype._setState = function(state) {
     case Max.SUPER_HAMMER_PUNCH:
       self._state = Max.SUPER_HAMMER_PUNCH;
       self._textOffset.y = -107;
-      self._lockSpriteToBody = false;
       self._shadow.visible = true;
+      self._lockSpriteToBody = false;
+      self._landingSprite = 'jump-0';
       self._currentAnimation = self._sprite.animations.play('super-hammer-punch');
       break;
 
     case Max.ELBOW_DROP:
       self._state = Max.ELBOW_DROP;
       self._textOffset.y = -105;
-      self._lockSpriteToBody = false;
       self._shadow.visible = true;
+      self._lockSpriteToBody = false;
+      self._landingOffset = 30;
+      self._landingSprite = 'elbow-drop-2';
       self._currentAnimation = self._sprite.animations.play('elbow-drop');
       break;
 
+    case Max.DROP_KICK:
+      self._state = Max.DROP_KICK;
+      self._shadow.visible = true;
+      self._lockSpriteToBody = false;
+      self._landingOffset = 40;
+      self._landingSprite = 'power-slide-0';
+      self._currentAnimation = self._sprite.animations.play('drop-kick');
+      break;
+
     default:
-      // FIXME
-      console.log('set state: UNKNOWN'); 
+      console.log('set state: UNKNOWN'); // FIXME
   }
 
 };
@@ -1044,7 +1061,7 @@ Max.prototype._update = function(time) {
             self._sprite.frameName = 'jump-0';
             self._shadow.visible = false;
           } else if (self._isClient && self._input.hasInput()) {
-            self._setNextState({A: Max.SUPER_HAMMER_PUNCH, B: Max.ELBOW_DROP});
+            self._setNextState({A: Max.SUPER_HAMMER_PUNCH, B: Max.ELBOW_DROP, C: Max.DROP_KICK});
           }
 
           break;
@@ -1060,19 +1077,33 @@ Max.prototype._update = function(time) {
 
     case Max.SUPER_HAMMER_PUNCH:
     case Max.ELBOW_DROP:
+    case Max.DROP_KICK:
       self._worldBody.velocity.x = self._velocityOnStart.x;
       self._worldBody.velocity.y = self._velocityOnStart.y;
       self._sprite.x = Math.floor(self._worldBody.x);
       self._sprite.y = Math.floor(self._worldBody.y);
 
-      dt = (time - self._jumpTime)/1000;
-      self._sprite.y = self._shadow.y + dt*(Max.JUMP_VELOCITY + dt*Player.HALF_GRAVITY);
-      self._sprite.z = self._shadow.y;
+      switch (self._jumpState) {
+        case 1:
+          dt = (time - self._jumpTime)/1000;
+          self._sprite.y = self._shadow.y + dt*(Max.JUMP_VELOCITY + dt*Player.HALF_GRAVITY);
+          self._sprite.z = self._shadow.y;
 
-      if (dt > 0 && self._sprite.y > self._shadow.y) {
-        self._sprite.y = self._shadow.y;
-        self._shadow.visible = false;
-        self._setNextState();
+          if (dt > 0 && self._sprite.y > self._shadow.y + self._landingOffset) {
+            self._jumpState = 2;
+            self._landTime = time;
+            self._sprite.y = self._shadow.y;
+            self._sprite.frameName = self._landingSprite;
+            self._shadow.visible = false;
+          }
+
+          break;
+        case 2:
+          dt = time - self._landTime;
+          if (dt >= Max.CROUCH_TIME) {
+            self._setNextState();
+          }
+          break;
       }
 
       break;
