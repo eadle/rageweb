@@ -1058,13 +1058,14 @@ Max.prototype._update = function(time) {
           self._sprite.y = self._shadow.y + dt*(Max.JUMP_VELOCITY + dt*Player.HALF_GRAVITY);
           self._sprite.z = self._shadow.y;
 
+          var distanceFromFloor = Math.abs(self._sprite.y - self._shadow.y);
           if (dt > 0 && self._sprite.y > self._shadow.y) {
             self._sprite.y = self._shadow.y;
             self._jumpState = 2;
             self._landTime = time;
             self._sprite.frameName = 'jump-0';
             self._shadow.visible = false;
-          } else if (self._isClient && self._input.hasInput()) {
+          } else if (self._isClient && self._input.hasInput() && distanceFromFloor > 30) {
             self._setNextState({
               A: Max.ELBOW_DROP,
               B: Max.DROP_KICK,

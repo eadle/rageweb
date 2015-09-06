@@ -1,7 +1,7 @@
 'use strict';
 
 PlayerInput.MAX_DT = 10;
-PlayerInput.WINDOW = 250;
+PlayerInput.WINDOW = 300;
 
 PlayerInput.A_KEY = Phaser.Keyboard.A;
 PlayerInput.B_KEY = Phaser.Keyboard.D;
@@ -180,7 +180,7 @@ PlayerInput.prototype.dequeue = function() {
 PlayerInput.prototype.enqueue = function(key) {
   var self = this;
 
-  console.log(key + ' pressed');
+  //console.log(key + ' pressed');
   if (self.captureInput) {
     var now = new Date().getTime();
     self.buffer.push({
