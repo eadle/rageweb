@@ -1,6 +1,6 @@
 'use strict';
 
-PlayerInput.MAX_DT = 1000;
+PlayerInput.MAX_DT = 10;
 
 PlayerInput.A_KEY = Phaser.Keyboard.S;
 PlayerInput.B_KEY = Phaser.Keyboard.D;
