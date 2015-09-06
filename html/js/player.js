@@ -664,13 +664,15 @@ Max.HAMMER_PUNCH       = 5;
 Max.SUPER_HAMMER_PUNCH = 6;
 Max.KNUCKLE_BOMB       = 7;
 Max.THUNDER_TACKLE     = 8;
+Max.POWER_SLIDE        = 10;
+Max.ELBOW_DROP         = 11;
 Max.DAMAGED            = 16;
 Max.FALL               = 17;
 Max.RECOVER            = 18;
 // constants
 Max.SPEED = 200;
 Max.CROUCH_TIME = 50; // ms
-Max.JUMP_VELOCITY = -250;
+Max.JUMP_VELOCITY = -275;
 Max.TEXT_OFFSET_X = 0;
 Max.TEXT_OFFSET_Y = -97;
 
@@ -724,9 +726,26 @@ function Max(game, options) {
   self._sprite.animations.add('hammer-punch', [
     'hammer-punch-1',
     'hammer-punch-1',
+    'hammer-punch-1',
+    'hammer-punch-2',
     'hammer-punch-2',
     'hammer-punch-3',
+    'hammer-punch-3',
     'hammer-punch-3'
+  ], 16, false);
+  // super-hammer-punch animation
+  self._sprite.animations.add('super-hammer-punch', [
+    'super-hammer-punch-0',
+    'super-hammer-punch-0',
+    'super-hammer-punch-0',
+    'super-hammer-punch-1',
+    'super-hammer-punch-1',
+    'super-hammer-punch-2'
+  ], 16, false);
+  // elbow-drop animation
+  self._sprite.animations.add('elbow-drop', [
+    'elbow-drop-0',
+    'elbow-drop-1'
   ], 8, false);
   // knuckle-bomb animation
   self._sprite.animations.add('knuckle-bomb', [
@@ -739,7 +758,7 @@ function Max(game, options) {
     'knuckle-bomb-2',
     'knuckle-bomb-3'
   ], 16, false);
-  // thunder-tackle-animation
+  // thunder-tackle animation
   self._sprite.animations.add('thunder-tackle', [
     'thunder-tackle-0',
     'thunder-tackle-0',
@@ -748,6 +767,16 @@ function Max(game, options) {
     'thunder-tackle-3',
     'thunder-tackle-1'
   ], 14, false); 
+  // power-slide animation
+  self._sprite.animations.add('power-slide', [
+    'power-slide-0',
+    'power-slide-0',
+    'power-slide-1',
+    'power-slide-1',
+    'power-slide-2',
+    'power-slide-2',
+    'recover-2',
+  ], 10, false);
 
   // add the sprite to sprite group for z-sorting
   if (typeof options.playerSpriteGroup === 'object') {
@@ -863,22 +892,39 @@ Max.prototype._setState = function(state) {
       break;
     case Max.THUNDER_TACKLE:
       self._state = Max.THUNDER_TACKLE;
-
-      // get vertical velocity for tackle
-      if (self._keystate & Player.UP_PRESSED !== self._keystate & Player.DOWN_PRESSED) {
-      }
-
       var dy = 1.25*Max.SPEED;
       self._velocityOnStart.y = 0;
       if (self._keystate & Player.UP_PRESSED) self._velocityOnStart.y -= dy;
       if (self._keystate & Player.DOWN_PRESSED) self._velocityOnStart.y += dy;
-
       var dx = 2.5*Max.SPEED;
       self._velocityOnStart.x = (self._sprite.scale.x < 0) ? -dx : dx;
-
       self._currentAnimation = self._sprite.animations.play('thunder-tackle');
-
       break;
+
+    case Max.POWER_SLIDE:
+      self._state = Max.POWER_SLIDE;
+      var dx = 1.5*Max.SPEED;
+      self._velocityOnStart.x = (self._sprite.scale.x < 0) ? -dx : dx;
+      self._velocityOnStart.y = 0;
+      self._currentAnimation = self._sprite.animations.play('power-slide');
+      break;
+
+    case Max.SUPER_HAMMER_PUNCH:
+      self._state = Max.SUPER_HAMMER_PUNCH;
+      self._textOffset.y = -107;
+      self._lockSpriteToBody = false;
+      self._shadow.visible = true;
+      self._currentAnimation = self._sprite.animations.play('super-hammer-punch');
+      break;
+
+    case Max.ELBOW_DROP:
+      self._state = Max.ELBOW_DROP;
+      self._textOffset.y = -105;
+      self._lockSpriteToBody = false;
+      self._shadow.visible = true;
+      self._currentAnimation = self._sprite.animations.play('elbow-drop');
+      break;
+
     default:
       // FIXME
       console.log('set state: UNKNOWN'); 
@@ -914,7 +960,7 @@ Max.prototype._setNextState = function(transitions) {
   if (self._isClient) {
     var transition = transitions || {};
 
-    var stateA = transition.A || Max.KNUCKLE_BOMB,
+    var stateA = transition.A || Max.POWER_SLIDE,
         stateB = transition.B || Max.CHOP,
         stateC = transition.C || Max.JUMP,
         stateAB  = transition.AB  || Max.THUNDER_TACKLE,
@@ -997,7 +1043,10 @@ Max.prototype._update = function(time) {
             self._landTime = time;
             self._sprite.frameName = 'jump-0';
             self._shadow.visible = false;
+          } else if (self._isClient && self._input.hasInput()) {
+            self._setNextState({A: Max.SUPER_HAMMER_PUNCH, B: Max.ELBOW_DROP});
           }
+
           break;
         case 2: // landing
           dt = time - self._landTime;
@@ -1005,6 +1054,25 @@ Max.prototype._update = function(time) {
             self._setNextState();
           }
         default:
+      }
+
+      break;
+
+    case Max.SUPER_HAMMER_PUNCH:
+    case Max.ELBOW_DROP:
+      self._worldBody.velocity.x = self._velocityOnStart.x;
+      self._worldBody.velocity.y = self._velocityOnStart.y;
+      self._sprite.x = Math.floor(self._worldBody.x);
+      self._sprite.y = Math.floor(self._worldBody.y);
+
+      dt = (time - self._jumpTime)/1000;
+      self._sprite.y = self._shadow.y + dt*(Max.JUMP_VELOCITY + dt*Player.HALF_GRAVITY);
+      self._sprite.z = self._shadow.y;
+
+      if (dt > 0 && self._sprite.y > self._shadow.y) {
+        self._sprite.y = self._shadow.y;
+        self._shadow.visible = false;
+        self._setNextState();
       }
 
       break;
@@ -1045,6 +1113,17 @@ Max.prototype._update = function(time) {
       if (!self._currentAnimation.isPlaying) {
         self._setNextState();
       }
+      break;
+
+    case Max.POWER_SLIDE:
+      if (self._sprite.frameName !== 'power-slide-0' && self._sprite.frameName !== 'recover-2') {
+        self._worldBody.velocity.x = self._velocityOnStart.x;
+        self._worldBody.velocity.y = self._velocityOnStart.y;
+      }
+      if (!self._currentAnimation.isPlaying) {
+        self._setNextState();
+      }
+      
       break;
 
   }
