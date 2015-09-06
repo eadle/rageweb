@@ -45,6 +45,7 @@ function PlayerInput(game, options) {
       }
     },
     onAxis: function(pad, axis, value) {
+      if (self.captureInput === false) return;
       // horizontal movement
       if (axis === 0) {
         if (value > 0) {
