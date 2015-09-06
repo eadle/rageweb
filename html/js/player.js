@@ -1,15 +1,18 @@
 'use strict';
 
 // maximum 256 player states
-Player.STATE_MASK = 0x00FF; // 1111 1111
+Player.STATE_MASK = 0x00FF;
+// speed modifier encoding
+Player.SPEED_X_MODIFIER_MASK = 0xFF00;
+Player.SPEED_Y_MODIFIER_MASK = 0xFF0000;
 // movement encoding
-Player.LEFT_PRESSED  = 1 << 8;  // 0001 XXXX XXXX 
-Player.RIGHT_PRESSED = 1 << 9;  // 0010 XXXX XXXX 
-Player.UP_PRESSED    = 1 << 10; // 0100 XXXX XXXX 
-Player.DOWN_PRESSED  = 1 << 11; // 1000 XXXX XXXX
-Player.KEYSTATE_MASK = 0x0F00;
+Player.LEFT_PRESSED  = 1 << 24;  // 0001 XXXX XXXX 
+Player.RIGHT_PRESSED = 1 << 25;  // 0010 XXXX XXXX 
+Player.UP_PRESSED    = 1 << 26; // 0100 XXXX XXXX 
+Player.DOWN_PRESSED  = 1 << 27; // 1000 XXXX XXXX
+Player.KEYSTATE_MASK = 0x0F000000;
 // direction encoding
-Player.FACING_LEFT = 1 << 12;
+Player.FACING_LEFT = 1 << 28;
 // other shared attributes
 Player.START_POS = {x: 256, y: 220}; // temp
 Player.HALF_GRAVITY = 300;

@@ -20,6 +20,60 @@ function PlayerInput(game, options) {
   }
   self._game = game;
 
+  var buttonCodes = ['A', 'B', 'X', 'Y'];
+  self._pad = self._game.input.gamepad.start();
+  self._pad = self._game.input.gamepad.pad1;
+  self._pad.addCallbacks(self, {
+    onConnect: function() {
+      console.log('gamepad connected');
+    },
+    onDisconnect: function() {
+      console.log('gamepad disconnected');
+    },
+    onDown: function(buttonCode, value) {
+      switch (buttonCode) {
+        case 0:
+          self.enqueue('B');  
+          break;
+        case 2:
+          self.enqueue('A');
+          break;
+        case 3:
+          self.enqueue('C');
+          break;
+        default:
+      }
+    },
+    onAxis: function(pad, axis, value) {
+      // horizontal movement
+      if (axis === 0) {
+        if (value > 0) {
+          self.keystate |= Player.RIGHT_PRESSED;
+          self.keystate &= ~Player.LEFT_PRESSED;
+        } else if (value < 0) {
+          self.keystate |= Player.LEFT_PRESSED;
+          self.keystate &= ~Player.RIGHT_PRESSED;
+        } else {
+          self.keystate &= ~Player.LEFT_PRESSED;
+          self.keystate &= ~Player.RIGHT_PRESSED;
+        }
+      }
+      // vertical movement
+      if (axis === 1) {
+        if (value > 0) {
+          self.keystate |= Player.DOWN_PRESSED;
+          self.keystate &= ~Player.UP_PRESSED;
+        } else if (value < 0) {
+          self.keystate |= Player.UP_PRESSED;
+          self.keystate &= ~Player.DOWN_PRESSED;
+        } else {
+          self.keystate &= ~Player.UP_PRESSED;
+          self.keystate &= ~Player.DOWN_PRESSED;
+        }
+      }
+    }
+  });
+
   self.buffer = [];
   self.keystate = 0;
   self._lastPressTime = 0;
