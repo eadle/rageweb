@@ -120,7 +120,7 @@ function Game(options) {
       self._volume.onclick = function() {
         self.toggleSound();
       };
-      self._game.sound.volume = 0.1;
+      self._game.sound.volume = 0.4;
     },
     update: function() {
       var time = new Date().getTime();

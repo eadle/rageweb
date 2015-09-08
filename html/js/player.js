@@ -882,11 +882,18 @@ function Max(game, options) {
 
 }
 
-Max.prototype.hit = function() {
+Max.prototype.hit = function(from) {
   var self = this;
   var timeSinceLastHit = new Date().getTime() - self._lastHitTime;
   if (self._state < Max.DAMAGED && timeSinceLastHit > Max.DAMAGED_TIME + 75) {
-    self._setState(Max.DAMAGED);
+    console.log('hp: ' + self._health);
+    if (self._health < 0) {
+      self._setState(Max.FALL);
+      self._health = 100;
+    } else {
+      self._setState(Max.DAMAGED);
+      self._health -= 35;
+    }
   }
 };
 
@@ -897,10 +904,18 @@ Max.prototype._collisionCallback = function(bodyA, bodyB) {
 
   if (Math.abs(bodyA.player._shadow.y - bodyB.player._shadow.y) <= 10) {
     if (bodyA.isHitbox && bodyA.player._isClient) {
-      bodyA.player.hit();
+      var from = {
+        x: bodyB.player._sprite.x,
+        y: bodyB.player._sprite.y
+      };
+      bodyA.player.hit(from);
     }
     if (bodyB.isHitbox && bodyB.player._isClient) {
-      bodyB.player.hit();
+      var from = {
+        x: bodyA.player._sprite.x,
+        y: bodyA.player._sprite.y
+      };
+      bodyB.player.hit(from);
     }
   }
 }
@@ -959,6 +974,7 @@ Max.prototype._setState = function(state) {
 
     case Max.FALL:
       self._state = Max.FALL;
+      self._audio.hit1.play();
       self._sprite.animations.stop();
       self._lockSpriteToBody = false;
       self._sprite.frameName = 'fall-0';
