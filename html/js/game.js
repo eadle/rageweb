@@ -63,7 +63,7 @@ function Game(options) {
       self._game.load.audio('sfx-power-slide', 'assets/sound/max/power-slide.ogg');
       self._game.load.audio('sfx-thunder-body-slam', 'assets/sound/max/thunder-body-slam.ogg');
 
-      self._game.load.audio('round1', 'assets/sound/round1.ogg');
+      //self._game.load.audio('round1', 'assets/sound/round1.ogg');
 
       // UI callbacks
       self._setupCanvasScaling();
@@ -127,8 +127,8 @@ function Game(options) {
         self.toggleSound();
       };
       self._game.sound.volume = 1;
-      var sfx = self._game.add.audio('round1');
-      sfx.play();
+      //var sfx = self._game.add.audio('round1');
+      //sfx.play();
     },
     update: function() {
       var time = new Date().getTime();
