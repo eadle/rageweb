@@ -700,7 +700,7 @@ Max.prototype = Object.create(Player.prototype);
 Max.constructor = Max;
 
 // states
-Max.NO_STATE           = -1;
+Max.NO_STATE           =-1;
 Max.IDLE               = 0;
 Max.WALK               = 1;
 Max.JUMP               = 2;
@@ -713,9 +713,10 @@ Max.THUNDER_TACKLE     = 8;
 Max.POWER_SLIDE        = 10;
 Max.ELBOW_DROP         = 11;
 Max.DROP_KICK          = 12;
-Max.DAMAGED            = 16;
-Max.FALL               = 17;
-Max.RECOVER            = 18;
+Max.DAMAGED            = 13;
+Max.FALL               = 14;
+Max.RECOVER            = 15;
+Max.GHOST              = 16;
 // constants
 Max.SPEED = 200;
 Max.CROUCH_TIME = 50;
@@ -896,6 +897,16 @@ function Max(game, options) {
 
 }
 
+Max.prototype.setGhosting = function(ghosting) {
+  var self = this;
+  var ghost = (typeof ghosting === 'boolean') ? ghosting : false;
+  if (ghosting) {
+    self._setState(Max.GHOST);
+  } else {
+    self._setNextState();
+  }
+};
+
 Max.prototype.hit = function(from) {
   var self = this;
   var timeSinceLastHit = new Date().getTime() - self._lastHitTime;
@@ -944,6 +955,7 @@ Max.prototype._clearState = function() {
     self._keystate = self._input.keystate;
   }
   self._faceProperDirection();
+  self._sprite.alpha = 1.0;
 };
 
 Max.prototype._setState = function(state) {
@@ -961,6 +973,12 @@ Max.prototype._setState = function(state) {
   }
 
   switch (state) {
+
+    case Max.GHOST:
+      self._state = Max.GHOST;
+      self._sprite.alpha = 0.4;
+      self._currentAnimation = self._sprite.animations.play('idle');
+      break;
 
     case Max.IDLE:
       self._state = Max.IDLE;
@@ -1346,6 +1364,8 @@ Max.prototype._update = function(time) {
       }
       
       break;
+
+    default: /* do nothing */
 
   }
 

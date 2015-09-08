@@ -170,6 +170,7 @@ Game.prototype._setupWindowEvents = function() {
     if (self._client) {
       self._client.ignoreInput();
       self._clearClientState();
+      self._client.setGhosting(true);
       if (self._client.needsBroadcast()) {
         self._broadcastClientState();
       }
@@ -181,6 +182,7 @@ Game.prototype._setupWindowEvents = function() {
     self._chat.focus();
     if (self._client) {
       self._client.useInput();
+      self._client.setGhosting(false);
     }
   };
 
