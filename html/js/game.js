@@ -50,6 +50,15 @@ function Game(options) {
       self._game.load.image('shadow', 'assets/players/shadow.png');
       self._game.load.tilemap('subway-map', 'assets/levels/subway32.json',null, Phaser.Tilemap.TILED_JSON);
       self._game.load.image('subway', 'assets/levels/subway32.png');
+
+      // assets/sound/attack.ogg
+      // assets/sound/hit-0.ogg hit-1.ogg hit-2.ogg
+      self._game.load.audio('sfx-attack', 'assets/sound/attack.ogg');
+      self._game.load.audio('sfx-hit-0', 'assets/sound/hit-0.ogg');
+      self._game.load.audio('sfx-hit-1', 'assets/sound/hit-1.ogg');
+      self._game.load.audio('sfx-hit-2', 'assets/sound/hit-2.ogg');
+      self._game.load.audio('sfx-jump', 'assets/sound/jump.ogg');
+
       // UI callbacks
       self._setupCanvasScaling();
       self._setupWindowEvents();
@@ -90,7 +99,7 @@ function Game(options) {
         playerCollisionGroup: self._playerCollisionGroup,
         hitboxCollisionGroup: self._hitboxCollisionGroup,
         attackCollisionGroup: self._attackCollisionGroup,
-        debug: true
+        debug: false
       });
 
       // add collision layer to physics world
@@ -104,6 +113,14 @@ function Game(options) {
       // resize chat
       self._resizeChat();
       self._chat.appendSessionMessage('[Keyboard controls: ASDF and arrow keys] [Gamepad supported]');
+
+      // volume stuff
+      self._muted = false;
+      self._volume = document.getElementById('volume');
+      self._volume.onclick = function() {
+        self.toggleSound();
+      };
+      self._game.sound.volume = 0.1;
     },
     update: function() {
       var time = new Date().getTime();
@@ -128,6 +145,13 @@ function Game(options) {
   });
 
 }
+
+Game.prototype.toggleSound = function() {
+  var self = this;
+  self._muted = !self._muted;
+  self._game.sound.mute = self._muted;
+  self._volume.src = (self._muted) ? 'img/volume-off-icon.png' : 'img/volume-on-icon.png';
+};
 
 Game.prototype._setupWindowEvents = function() {
   var self = this;

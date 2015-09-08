@@ -290,7 +290,7 @@ Player.prototype._getEncodedSpeedModifiers = function() {
 Player.prototype.getState = function() {
   var self = this;
   var modifiers = self._getEncodedSpeedModifiers();
-  console.log('modifiers: ' + modifiers);
+  //console.log('modifiers: ' + modifiers);
   var encoding = self._state | self._keystate | self._direction | modifiers;
   return encoding;
 };
@@ -300,9 +300,9 @@ Player.prototype.setState = function(state) {
 
   // decode modifier
   var blah = (0xFF00 & state);
-  console.log('blah: ' + blah);
+  //console.log('blah: ' + blah);
   var xModifier = self._decodeSpeedModifier((state & Player.SPEED_X_MODIFIER) >> 8);
-  console.log('xModifier: ' + xModifier);
+  //console.log('xModifier: ' + xModifier);
 
   // face the proper direction
   if (state & Player.FACING_LEFT) {
@@ -528,8 +528,9 @@ Vice.prototype.canMove = function() {
 
 Vice.prototype._collisionCallback = function(bodyA, bodyB) {
   var self = this;
+  //console.log('collision callback');
   if (Math.abs(bodyA.player._shadow.y - bodyB.player._shadow.y) <= 10) {
-    //self.hit();
+    self.hit();
   }
 }
 
@@ -717,7 +718,8 @@ Max.FALL               = 17;
 Max.RECOVER            = 18;
 // constants
 Max.SPEED = 200;
-Max.CROUCH_TIME = 50; // ms
+Max.CROUCH_TIME = 50;
+Max.DAMAGED_TIME = 200;
 Max.JUMP_VELOCITY = -275;
 Max.TEXT_OFFSET_X = 0;
 Max.TEXT_OFFSET_Y = -97;
@@ -752,6 +754,12 @@ function Max(game, options) {
     'walk-4',
     'walk-5'
   ], 10, true);
+  // recover animation
+  self._sprite.animations.add('recover', [
+    'recover-0',
+    'recover-1',
+    'recover-2'
+  ], 4, false);
   // chop animation
   self._sprite.animations.add('chop', [
     'chop-0',
@@ -854,11 +862,47 @@ function Max(game, options) {
   self._landTime   = -1;
   self._landingSprite = 'jump-0';
   self._landingOffset = 0;
+  self._lastHitTime = 0;
 
   // FIXME to be removed
   self._stateStartTime = new Date().getTime();
   self._stateStartPosition = position;
 
+  // sound effects
+  self._audio = { 
+    attack: self._game.add.audio('sfx-attack'),
+    hit0: self._game.add.audio('sfx-hit-0'),
+    hit1: self._game.add.audio('sfx-hit-0'),
+    hit2: self._game.add.audio('sfx-hit-0'),
+    jump: self._game.add.audio('sfx-jump')
+  };
+
+  //self._game.sound.mute = true;
+  //self._game.sound.volume = 0.1;
+
+}
+
+Max.prototype.hit = function() {
+  var self = this;
+  var timeSinceLastHit = new Date().getTime() - self._lastHitTime;
+  if (self._state < Max.DAMAGED && timeSinceLastHit > Max.DAMAGED_TIME + 75) {
+    self._setState(Max.DAMAGED);
+  }
+};
+
+Max.prototype._collisionCallback = function(bodyA, bodyB) {
+  var self = this;
+
+  if (bodyA.player._id === bodyB.player._id) return;
+
+  if (Math.abs(bodyA.player._shadow.y - bodyB.player._shadow.y) <= 10) {
+    if (bodyA.isHitbox && bodyA.player._isClient) {
+      bodyA.player.hit();
+    }
+    if (bodyB.isHitbox && bodyB.player._isClient) {
+      bodyB.player.hit();
+    }
+  }
 }
 
 Max.prototype._clearState = function() {
@@ -904,9 +948,35 @@ Max.prototype._setState = function(state) {
       self._currentAnimation = self._sprite.animations.play('walk');
       break;
 
+    case Max.DAMAGED:
+      self._audio.hit0.play();
+      self._state = Max.DAMAGED;
+      self._sprite.animations.stop();
+      self._sprite.frameName = 'damaged-0';
+      self._stateStartTime = new Date().getTime();
+      self._lastHitTime = self._stateStartTime;
+      break;
+
+    case Max.FALL:
+      self._state = Max.FALL;
+      self._sprite.animations.stop();
+      self._lockSpriteToBody = false;
+      self._sprite.frameName = 'fall-0';
+      self._shadow.visible = true;
+      // self._landingOffset = ???;
+      self._sprite.frameName = 'fall-0';
+      self._stateStartTime = new Date().getTime();
+      break;
+
+    case Max.RECOVER:
+      self._state = Max.RECOVER;
+      self._currentAnimation = self._sprite.animations.play('recover');
+      break;
+
     case Max.JUMP:
       self._state = Max.JUMP;
       self._jumpState = 0;
+      self._audio.jump.play();
       self._sprite.animations.stop();
       self._lockSpriteToBody = false;
       self._sprite.frameName = 'jump-0';
@@ -921,16 +991,19 @@ Max.prototype._setState = function(state) {
 
     case Max.CHOP:
       self._state = Max.CHOP;
+      self._audio.attack.play();
       self._currentAnimation = self._sprite.animations.play('chop');
       break;
 
     case Max.RIGHT_PUNCH:
       self._state = Max.RIGHT_PUNCH;
+      self._audio.attack.play();
       self._currentAnimation = self._sprite.animations.play('right-punch');
       break;
 
     case Max.HAMMER_PUNCH:
       self._state = Max.HAMMER_PUNCH;
+      self._audio.attack.play();
       self._currentAnimation = self._sprite.animations.play('hammer-punch');
       break;
 
@@ -1075,6 +1148,30 @@ Max.prototype._update = function(time) {
         self._move();
       }
       self._setNextState();
+      break;
+
+    case Max.DAMAGED:
+      var dt = time - self._stateStartTime;
+      if (dt >= Max.DAMAGED_TIME) {
+        self._setNextState();
+      }
+      break;
+
+    case Max.FALL:
+      var dt = (time - self._stateStartTime)/1000;
+      self._sprite.y = self._shadow.y + dt*(Max.JUMP_VELOCITY + dt*Player.HALF_GRAVITY);
+      self._sprite.z = self._shadow.y;
+      if (dt > 0 && self._sprite.y > self._shadow.y + self._landingOffset) {
+        self._sprite.y = self._shadow.y;
+        self._shadow.visible = false;
+        self._setState(Max.RECOVER);
+      }
+      break;
+
+    case Max.RECOVER:
+      if (!self._currentAnimation.isPlaying) {
+        self._setNextState();
+      }
       break;
 
     case Max.JUMP:
