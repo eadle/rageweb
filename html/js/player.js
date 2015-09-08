@@ -874,8 +874,22 @@ function Max(game, options) {
     hit0: self._game.add.audio('sfx-hit-0'),
     hit1: self._game.add.audio('sfx-hit-0'),
     hit2: self._game.add.audio('sfx-hit-0'),
-    jump: self._game.add.audio('sfx-jump')
+    jump: self._game.add.audio('sfx-jump'),
+    elbowdrop: self._game.add.audio('sfx-elbow-drop'),
+    fall: self._game.add.audio('sfx-drop'),
+    powerslide: self._game.add.audio('sfx-power-slide'),
+    thunderbodyslam: self._game.add.audio('sfx-thunder-body-slam')
   };
+
+  self._audio.attack.volume = 0.4;
+  self._audio.hit0.volume = 0.4;
+  self._audio.hit1.volume = 0.4;
+  self._audio.hit2.volume = 0.4;
+  self._audio.jump.volume = 0.4;
+  self._audio.elbowdrop.volume = 0.4;
+  self._audio.fall.volume = 0.4;
+  self._audio.powerslide.volume = 0.3;
+  self._audio.thunderbodyslam.volume = 0.4;
 
   //self._game.sound.mute = true;
   //self._game.sound.volume = 0.1;
@@ -1025,6 +1039,7 @@ Max.prototype._setState = function(state) {
 
     case Max.KNUCKLE_BOMB:
       self._state = Max.KNUCKLE_BOMB;
+      self._audio.powerslide.play('', 0.2);
       self._currentAnimation = self._sprite.animations.play('knuckle-bomb');
       self._move(Max.SPEED/2);
       self._velocityOnStart = {
@@ -1035,6 +1050,8 @@ Max.prototype._setState = function(state) {
 
     case Max.THUNDER_TACKLE:
       self._state = Max.THUNDER_TACKLE;
+      self._audio.attack.play();
+      self._audio.thunderbodyslam.play();
       var dy = 1.25*Max.SPEED;
       self._velocityOnStart.y = 0;
       if (self._keystate & Player.UP_PRESSED) self._velocityOnStart.y -= dy;
@@ -1047,6 +1064,7 @@ Max.prototype._setState = function(state) {
     case Max.POWER_SLIDE:
       self._state = Max.POWER_SLIDE;
       var dx = 1.5*Max.SPEED;
+      self._audio.powerslide.play();
       self._velocityOnStart.x = (self._sprite.scale.x < 0) ? -dx : dx;
       self._velocityOnStart.y = 0;
       self._currentAnimation = self._sprite.animations.play('power-slide');
@@ -1054,6 +1072,7 @@ Max.prototype._setState = function(state) {
 
     case Max.SUPER_HAMMER_PUNCH:
       self._state = Max.SUPER_HAMMER_PUNCH;
+      self._audio.attack.play();
       self._textOffset.y = -107;
       self._shadow.visible = true;
       self._lockSpriteToBody = false;
@@ -1063,6 +1082,8 @@ Max.prototype._setState = function(state) {
 
     case Max.ELBOW_DROP:
       self._state = Max.ELBOW_DROP;
+
+      self._audio.attack.play();
       self._textOffset.y = -105;
       self._shadow.visible = true;
       self._lockSpriteToBody = false;
@@ -1073,6 +1094,7 @@ Max.prototype._setState = function(state) {
 
     case Max.DROP_KICK:
       self._state = Max.DROP_KICK;
+      self._audio.attack.play();
       self._shadow.visible = true;
       self._lockSpriteToBody = false;
       self._landingOffset = 40;
