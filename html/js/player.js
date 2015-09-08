@@ -125,6 +125,10 @@ function Player(game, options) {
   self._lastKeystateInternal = self._keystate;
   self._lastDirectionInternal = self._direction;
 
+  // also passed in netcode
+  self._speedModifier = {x: 1.0, y: 1.0};
+  self._health = 100;
+
   // client uses input events
   self._input = (self._isClient) ? new PlayerInput(self._game, self) : null;
 
@@ -252,13 +256,53 @@ Player.prototype.setKeystate = function(keystate) {
   this._keystate = keystate;
 };
 
+// Player.SPEED_X_MODIFIER_MASK = 0xFF00;
+// Player.SPEED_Y_MODIFIER_MASK = 0xFF0000;
+Player.prototype._encodeSpeedModifier = function(modifier) {
+  var self = this;
+  var whole = Math.floor(modifier);
+  var fractional = Math.floor(100*(modifier - whole));
+  var encoding = (0xC0 & (whole << 6)) | (0x3F & fractional);
+  //console.log('encoding: ' + encoding);
+  return encoding;
+};
+
+Player.prototype._decodeSpeedModifier = function(modifier) {
+  var self = this;
+  var whole = (0xC0 & modifier) >> 6;
+  var fractional = (0x3F & modifier)/100;
+  var decoding = whole + fractional;
+  //console.log('decoding: ' + decoding);
+  return decoding;
+};
+
+Player.prototype._getEncodedSpeedModifiers = function() {
+  var self = this;
+  //var xModifier = self._encodeSpeedModifier(self._speedModifier.x);
+  
+
+  var original = 1.25;
+  var xModifier = self._encodeSpeedModifier(original);
+  var yModifier = self._encodeSpeedModifier(original);
+  return (xModifier << 8) | (yModifier << 16);
+};
+
 Player.prototype.getState = function() {
   var self = this;
-  return self._state | self._keystate | self._direction;
+  var modifiers = self._getEncodedSpeedModifiers();
+  console.log('modifiers: ' + modifiers);
+  var encoding = self._state | self._keystate | self._direction | modifiers;
+  return encoding;
 };
 
 Player.prototype.setState = function(state) {
   var self = this;
+
+  // decode modifier
+  var blah = (0xFF00 & state);
+  console.log('blah: ' + blah);
+  var xModifier = self._decodeSpeedModifier((state & Player.SPEED_X_MODIFIER) >> 8);
+  console.log('xModifier: ' + xModifier);
 
   // face the proper direction
   if (state & Player.FACING_LEFT) {
@@ -485,7 +529,7 @@ Vice.prototype.canMove = function() {
 Vice.prototype._collisionCallback = function(bodyA, bodyB) {
   var self = this;
   if (Math.abs(bodyA.player._shadow.y - bodyB.player._shadow.y) <= 10) {
-    self.hit();
+    //self.hit();
   }
 }
 

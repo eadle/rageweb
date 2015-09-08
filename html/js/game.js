@@ -45,7 +45,7 @@ function Game(options) {
       self._game.load.physics('vice-physics', 'assets/players/vice/vice-physics.json');
 
       self._game.load.atlas('max-atlas', 'assets/players/max/max.png', 'assets/players/max/max-atlas.json');
-      // self._game.load.physics('max-physics', 'assets/players/max/max-physics.json');
+      self._game.load.physics('max-physics', 'assets/players/max/max-physics.json');
 
       self._game.load.image('shadow', 'assets/players/shadow.png');
       self._game.load.tilemap('subway-map', 'assets/levels/subway32.json',null, Phaser.Tilemap.TILED_JSON);
@@ -317,7 +317,7 @@ Game.prototype._setupServerConnection = function(server) {
   self._ws = new WebSocket(server);
 
   self._ws.onmessage = function(event) {
-    console.log('received: ' + event.data);
+    //console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':

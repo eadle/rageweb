@@ -36,7 +36,7 @@ function PlayerFactory(game, options) {
   self._physicsFactory = new PhysicsFactory(self._game, {groups: physicsFactoryGroups});
   var physicsKeyConfig = {collides: [[1,2], [2,2]]};
   self._physicsFactory.addKey('vice', 'vice-atlas', 'vice-physics', physicsKeyConfig);
-  // self._physicsFactory.addKey('max', 'max-atlas', 'max-physics', physicsKeyConfig);
+  self._physicsFactory.addKey('max', 'max-atlas', 'max-physics', physicsKeyConfig);
 
 }
 
