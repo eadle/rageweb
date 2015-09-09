@@ -85,7 +85,7 @@ function Game(options) {
 
       // start physics system
       self._game.physics.startSystem(Phaser.Physics.P2JS);
-      self._game.physics.p2.useElapsedTime = true;
+      //self._game.physics.p2.useElapsedTime = true;
       self._game.physics.p2.setImpactEvents(true);
       self._game.physics.p2.updateBoundsCollisionGroup();
 
@@ -129,14 +129,23 @@ function Game(options) {
       self._game.sound.volume = 1;
       //var sfx = self._game.add.audio('round1');
       //sfx.play();
-    },
+
+      self._lastUpdate = new Date().getTime();
+    },  
     update: function() {
-      var time = new Date().getTime();
-      self._updatePlayers(time);
+      var now = new Date().getTime();
+
+      var numberOfFrames = 60*(now - self._lastUpdate)/1000;
+      //console.log('numberOfFrames: ' + numberOfFrames);
+      self._game.physics.p2.frameRate = (numberOfFrames)/60; // FIXME
+
+      self._updatePlayers(now);
       if (self._client) {
-        self._updateClient(time);
-      }
+        self._updateClient(now);
+      }   
       self._playerSpriteGroup.sort('z', Phaser.Group.SORT_ASCENDING);
+
+      self._lastUpdate = now;
     },
     render: function() {
       if (Game.DEBUGGING) {
