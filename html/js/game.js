@@ -4,7 +4,7 @@ Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.ASPECT = Game.WIDTH/Game.HEIGHT;
 Game.SERVER = 'ws://' + window.location.hostname + ':7000';
-Game.DEBUGGING = false;
+Game.DEBUGGING = true;
 
 function Game(options) {
   var self = this;
@@ -105,7 +105,7 @@ function Game(options) {
         playerCollisionGroup: self._playerCollisionGroup,
         hitboxCollisionGroup: self._hitboxCollisionGroup,
         attackCollisionGroup: self._attackCollisionGroup,
-        debug: false
+        debug: Game.DEBUGGING
       });
 
       // add collision layer to physics world

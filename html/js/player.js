@@ -2,14 +2,11 @@
 
 // maximum 256 player states
 Player.STATE_MASK = 0x00FF;
-// speed modifier encoding
-Player.SPEED_X_MODIFIER_MASK = 0xFF00;
-Player.SPEED_Y_MODIFIER_MASK = 0xFF0000;
 // movement encoding
-Player.LEFT_PRESSED  = 1 << 24;  // 0001 XXXX XXXX 
-Player.RIGHT_PRESSED = 1 << 25;  // 0010 XXXX XXXX 
-Player.UP_PRESSED    = 1 << 26; // 0100 XXXX XXXX 
-Player.DOWN_PRESSED  = 1 << 27; // 1000 XXXX XXXX
+Player.LEFT_PRESSED  = 1 << 24;
+Player.RIGHT_PRESSED = 1 << 25;
+Player.UP_PRESSED    = 1 << 26;
+Player.DOWN_PRESSED  = 1 << 27;
 Player.KEYSTATE_MASK = 0x0F000000;
 // direction encoding
 Player.FACING_LEFT = 1 << 28;
@@ -65,8 +62,6 @@ function Player(game, options) {
   self._shadow.anchor.setTo(0.5, 1.0);
   self._shadow.visible = false;
   self._shadow.smoothed = false;
-
-  // for player sprite
   self._lockSpriteToBody = true;
 
   // add the sprites to sprite group for z-sorting
@@ -111,28 +106,34 @@ function Player(game, options) {
   self._worldBody.addCircle(radius);
   self._worldBody.debug = self._debug;
   game.physics.p2.addBody(self._worldBody);
-
   var worldCollisionGroup = options.worldCollisionGroup;   // FIXME
   var playerCollisionGroup = options.playerCollisionGroup; // FIXME
   self._worldBody.setCollisionGroup(playerCollisionGroup);
   self._worldBody.collides([worldCollisionGroup]);
 
-  // player states
-  self._state = 0;
-  self._keystate = 0;
-  self._direction = 0;
-  self._lastStateInternal = self._state;
-  self._lastKeystateInternal = self._keystate;
-  self._lastDirectionInternal = self._direction;
-
-  // also passed in netcode
-  self._speedModifier = {x: 1.0, y: 1.0};
-  self._health = 100;
-
   // client uses input events
   self._input = (self._isClient) ? new PlayerInput(self._game, self) : null;
 
+  // player info
+  self._state = 0;
+  self._keystate = 0;
+  self._direction = 0;
+  self._stateStartPosition = {x: self._worldBody.x, y: self._worldBody.y};
+  self._stateStartVelocity = {x: 0, y: 0};
+  self._health = 100;
+
+  // helpers 
+  self._lastStateInternal = self._state;
+  self._lastKeystateInternal = self._keystate;
+  self._lastDirectionInternal = self._direction;
 }
+
+Player.prototype.useInput = function() {
+  var self = this;
+  if (self._isClient && self._input) {
+    self._input.captureInput = true;
+  } 
+};
 
 Player.prototype.ignoreInput = function() {
   var self = this;
@@ -140,13 +141,6 @@ Player.prototype.ignoreInput = function() {
     self._input.captureInput = false;
     self._input.clear();
   }
-};
-
-Player.prototype.useInput = function() {
-  var self = this;
-  if (self._isClient && self._input) {
-    self._input.captureInput = true;
-  } 
 };
 
 Player.prototype.cameraFollow = function(game) {
@@ -185,16 +179,26 @@ Player.prototype.destroy = function() {
 
 };
 
-Player.prototype.getName = function() {
-  return this._name;
-};
-
 Player.prototype.hasName = function() {
   return (typeof this._name === 'string');
 };
 
+Player.prototype.getName = function() {
+  return this._name;
+};
+
+Player.prototype.getVelocity = function() {
+  return {
+    x: this._worldBody.velocity.x, 
+    y: this._worldBody.velocity.y
+  };
+};
+
 Player.prototype.getPosition = function() {
-  return {x: this._worldBody.x, y: this._worldBody.y};
+  return {
+    x: this._worldBody.x,
+    y: this._worldBody.y
+  };
 };
 
 Player.prototype.setPosition = function(position) {
@@ -256,53 +260,13 @@ Player.prototype.setKeystate = function(keystate) {
   this._keystate = keystate;
 };
 
-// Player.SPEED_X_MODIFIER_MASK = 0xFF00;
-// Player.SPEED_Y_MODIFIER_MASK = 0xFF0000;
-Player.prototype._encodeSpeedModifier = function(modifier) {
-  var self = this;
-  var whole = Math.floor(modifier);
-  var fractional = Math.floor(100*(modifier - whole));
-  var encoding = (0xC0 & (whole << 6)) | (0x3F & fractional);
-  //console.log('encoding: ' + encoding);
-  return encoding;
-};
-
-Player.prototype._decodeSpeedModifier = function(modifier) {
-  var self = this;
-  var whole = (0xC0 & modifier) >> 6;
-  var fractional = (0x3F & modifier)/100;
-  var decoding = whole + fractional;
-  //console.log('decoding: ' + decoding);
-  return decoding;
-};
-
-Player.prototype._getEncodedSpeedModifiers = function() {
-  var self = this;
-  //var xModifier = self._encodeSpeedModifier(self._speedModifier.x);
-  
-
-  var original = 1.25;
-  var xModifier = self._encodeSpeedModifier(original);
-  var yModifier = self._encodeSpeedModifier(original);
-  return (xModifier << 8) | (yModifier << 16);
-};
-
 Player.prototype.getState = function() {
   var self = this;
-  var modifiers = self._getEncodedSpeedModifiers();
-  //console.log('modifiers: ' + modifiers);
-  var encoding = self._state | self._keystate | self._direction | modifiers;
-  return encoding;
+  return self._state | self._keystate | self._direction;
 };
 
 Player.prototype.setState = function(state) {
   var self = this;
-
-  // decode modifier
-  var blah = (0xFF00 & state);
-  //console.log('blah: ' + blah);
-  var xModifier = self._decodeSpeedModifier((state & Player.SPEED_X_MODIFIER) >> 8);
-  //console.log('xModifier: ' + xModifier);
 
   // face the proper direction
   if (state & Player.FACING_LEFT) {
@@ -317,18 +281,16 @@ Player.prototype.setState = function(state) {
 
 };
 
-Player.prototype._disableBody = function(body) {
-  var self = this;
-  body.clearCollision();
-};
-
 Player.prototype._enableBody = function(body, categoryBits) {
   var self = this;
   body.setCollisionGroup(self._collisionConfig.collisionGroups[categoryBits]);
   body.collides(self._collisionConfig.collides[categoryBits], self._collisionCallback, this);
 };
 
-
+Player.prototype._disableBody = function(body) {
+  var self = this;
+  body.clearCollision();
+};
 
 Player.prototype._updateCollisionBody = function() {
   var self = this;
@@ -358,18 +320,6 @@ Player.prototype._updateCollisionBody = function() {
     }
   }
 
-};
-
-Player.prototype._forceProperSpriteRendering = function() {
-  var self = this;
-  var shadowXOffset = (self._shadow.width%2)  ? 0 : -0.5,
-      spriteXOffset = (self._sprite.width%2)  ? 0 : -0.5,
-      shadowYOffset = (self._shadow.height%2) ? 0 : -0.5,
-      spriteYOffset = (self._sprite.height%2) ? 0 : -0.5;
-  self._shadow.x = Math.floor(self._shadow.x) + shadowXOffset;
-  self._shadow.y = Math.floor(self._shadow.y) + shadowYOffset;
-  self._sprite.x = Math.floor(self._sprite.x) + spriteXOffset;
-  self._sprite.y = Math.floor(self._sprite.y) + spriteYOffset;
 };
 
 Player.prototype._updateSprites = function() {
@@ -427,12 +377,6 @@ Player.prototype.update = function(time) {
   self._postUpdate();
 };
 
-// Override these
-Player.prototype._update = function(time) {};
-Player.prototype._setState = function(state) {};
-Player.prototype._setNextState = function() {};
-Player.prototype._collisionCallback = function(bodyA, bodyB) {};
-
 Player.prototype._isMoving = function() {
   return this._isMovingHorizontally() || this._isMovingVertically();
 };
@@ -451,20 +395,26 @@ Player.prototype._isMovingVertically = function() {
   return (up && !down) || (!up && down);
 };
 
+// Override these
+Player.prototype._update = function(time) {};
+Player.prototype._setState = function(state) {};
+Player.prototype._setNextState = function() {};
+Player.prototype._collisionCallback = function(bodyA, bodyB) {};
+
 
 Vice.prototype = Object.create(Player.prototype);
 Vice.constructor = Vice;
 
-Vice.IDLE      = 0;
+Vice.IDLE     = 0;
 Vice.WALK     = 1;
 Vice.PUNCH    = 2;
 Vice.HEADBUTT = 3;
-Vice.DAMAGED     = 4;
+Vice.DAMAGED  = 4;
 Vice.FALL     = 5;
 Vice.RECOVER  = 6;
 Vice.GHOST    = 7;
-Vice.DAMAGE_TIME = 150; // ms
-Vice.PUNCH_TIME  = 100;  // ms
+Vice.DAMAGE_TIME = 150;
+Vice.PUNCH_TIME  = 100;
 Vice.SPEED = 180;
 
 function Vice(game, options) {
