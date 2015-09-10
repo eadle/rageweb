@@ -188,17 +188,17 @@ Player.prototype.getName = function() {
 };
 
 Player.prototype.getVelocity = function() {
-  return {
-    x: this._worldBody.velocity.x, 
-    y: this._worldBody.velocity.y
-  };
+  return this._stateStartVelocity;
+};
+
+Player.prototype.setVelocity = function(velocity) {
+  var self = this;
+  self._worldBody.velocity.x = velocity.x;
+  self._worldBody.velocity.y = velocity.y;
 };
 
 Player.prototype.getPosition = function() {
-  return {
-    x: this._worldBody.x,
-    y: this._worldBody.y
-  };
+  return this._stateStartPosition; 
 };
 
 Player.prototype.setPosition = function(position) {
@@ -1073,6 +1073,9 @@ Max.prototype._setState = function(state) {
     default:
       console.log('set state: UNKNOWN'); // FIXME
   }
+
+  self._stateStartPosition = {x: self._worldBody.x, y: self._worldBody.y};
+  self._stateStartVelocity = {x: self._worldBody.velocity.x, y: self._worldBody.velocity.y};
 
 };
 

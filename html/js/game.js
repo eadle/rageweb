@@ -4,7 +4,7 @@ Game.WIDTH = 512;
 Game.HEIGHT = 256;
 Game.ASPECT = Game.WIDTH/Game.HEIGHT;
 Game.SERVER = 'ws://' + window.location.hostname + ':7000';
-Game.DEBUGGING = true;
+Game.DEBUGGING = false;
 
 function Game(options) {
   var self = this;
@@ -175,7 +175,9 @@ Game.prototype._setupWindowEvents = function() {
 
   // on game blur
   self._game.onBlur.dispatch = function() {
-    self._chat.blur();
+    if (self._chat) {
+      self._chat.blur();
+    }
     if (self._client) {
       self._client.ignoreInput();
       self._clearClientState();
@@ -188,7 +190,9 @@ Game.prototype._setupWindowEvents = function() {
 
   // on game focus
   self._game.onFocus.dispatch = function() {
-    self._chat.focus();
+    if (self._chat) {
+      self._chat.focus();
+    }
     if (self._client) {
       self._client.useInput();
       self._client.setGhosting(false);
@@ -341,8 +345,9 @@ Game.prototype._broadcastClientState = function() {
     self.send({
       'type': 'state',
       'id': self._client.id,
+      'state': self._client.getState(),
       'position': self._client.getPosition(),
-      'state': self._client.getState()
+      'velocity': self._client.getVelocity()
     });
   }
 };
@@ -360,7 +365,7 @@ Game.prototype._setupServerConnection = function(server) {
   self._ws = new WebSocket(server);
 
   self._ws.onmessage = function(event) {
-    //console.log('received: ' + event.data);
+    // console.log('received: ' + event.data);
     var message = JSON.parse(event.data);
     switch (message.type) {
       case 'handle':
@@ -372,8 +377,10 @@ Game.prototype._setupServerConnection = function(server) {
       case 'state':
         var pid = message.id,
             position = message.position,
+            velocity = message.velocity,
             state = message.state;
         if (pid in self._players) {
+          self._players[pid].setVelocity(velocity);
           self._players[pid].setPosition(position);
           self._players[pid].setState(state);
         }
