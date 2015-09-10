@@ -36,7 +36,7 @@ function Game(options) {
       // phaser settings
       self._game.antialias = false;
       self._game.stage.backgroundColor = '#222244';
-      self._game.time.advancedTiming = Game.DEBUGGING;
+      self._game.time.advancedTiming = true;
       self._game.stage.disableVisibilityChange = true;
       // load assets
       self._game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
@@ -80,6 +80,7 @@ function Game(options) {
       for (var ii = 0; ii < self._map.layers.length; ii++) {
         var layer = self._map.createLayer(self._map.layers[ii].name);
         layer.resizeWorld();  // FIXME
+        //layer.visible = false;
         self._layers.push(layer);
       }
 
@@ -148,6 +149,7 @@ function Game(options) {
       self._lastUpdate = now;
     },
     render: function() {
+      self._game.debug.text(self._game.time.fps || '--', 2, 14, "#00ff00");
       if (Game.DEBUGGING) {
         // show frames per second
         self._game.debug.text(self._game.time.fps || '--', 2, 14, "#00ff00");

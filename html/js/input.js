@@ -22,9 +22,11 @@ function PlayerInput(game, options) {
   }
   self._game = game;
 
+  self.captureInput = true;
+
   self._pad = self._game.input.gamepad.start();
   self._pad = self._game.input.gamepad.pad1;
-  self._pad.addCallbacks(self, {
+  self._game.input.gamepad.addCallbacks(self, {
     onConnect: function() {
       console.log('gamepad connected');
     },
@@ -32,7 +34,10 @@ function PlayerInput(game, options) {
       console.log('gamepad disconnected');
     },
     onDown: function(buttonCode, value) {
+      if (!self.captureInput) return;
+      console.log('buttonCode: ' + buttonCode);
       switch (buttonCode) {
+        // ATTACK BUTTONS
         case 0:
           self.enqueue('A');  
           break;
@@ -44,6 +49,39 @@ function PlayerInput(game, options) {
           break;
         case 3:
           self.enqueue('Y');
+          break;
+        // D-PAD INPUT
+        case 12:
+          self.keystate |= Player.UP_PRESSED;
+          break;
+        case 13:
+          self.keystate |= Player.DOWN_PRESSED;
+          break;
+        case 15:
+          self.keystate |= Player.RIGHT_PRESSED;
+          break;
+        case 14:
+          self.keystate |= Player.LEFT_PRESSED;
+          break;
+        default:
+      }
+    },
+    onUp: function(buttonCode, value) {
+      if (!self.captureInput) return;
+      console.log('buttonCode: ' + buttonCode);
+      switch (buttonCode) {
+        // D-PAD INPUT
+        case 12:
+          self.keystate ^= Player.UP_PRESSED;
+          break;
+        case 13:
+          self.keystate ^= Player.DOWN_PRESSED;
+          break;
+        case 15:
+          self.keystate ^= Player.RIGHT_PRESSED;
+          break;
+        case 14:
+          self.keystate ^= Player.LEFT_PRESSED;
           break;
         default:
       }
@@ -76,6 +114,9 @@ function PlayerInput(game, options) {
           self.keystate &= ~Player.DOWN_PRESSED;
         }
       }
+    },
+    onFloat: function(buttonCode, value) {
+      console.log('buttonCode: ' + buttonCode + ', value: ' + value);
     }
   });
 
@@ -101,7 +142,6 @@ function PlayerInput(game, options) {
   self.setDownKey(PlayerInput.DOWN_KEY);
   self.setUpKey(PlayerInput.UP_KEY);
 
-  self.captureInput = true;
 
 }
 
