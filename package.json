@@ -12,6 +12,6 @@
     "ws": "^0.7.2"
   },
   "repository": {
-    "git": "git://github.com/siphontv/skellyweb.git"
+    "git": "git://github.com/eadle/skellyweb.git"
   }
 }
