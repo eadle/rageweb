@@ -9,7 +9,7 @@
   "author": "Ed Markowski <siphon@protonmail.com>",
   "license": "GPL 3.0",
   "dependencies": {
-    "ws": "^0.7.2"
+    "ws": "^1.1.1"
   },
   "repository": {
     "git": "git://github.com/eadle/skellyweb.git"
